@@ -12,6 +12,7 @@
 #[macro_use] extern crate log;
 #[macro_use] extern crate serenity;
 
+extern crate rand;
 extern crate env_logger;
 extern crate kankyo;
 
@@ -19,6 +20,7 @@ mod commands;
 
 use serenity::framework::StandardFramework;
 use serenity::model::event::ResumedEvent;
+use serenity::model::channel::Message;
 use serenity::model::gateway::Ready;
 use serenity::prelude::*;
 use serenity::http;
@@ -34,6 +36,35 @@ impl EventHandler for Handler {
 
     fn resume(&self, _: Context, _: ResumedEvent) {
         info!("Resumed");
+    }
+
+    fn message(&self, _: Context, msg: Message) {
+        if msg.content.contains("rust") {
+            /*let mut emote : Emoji = Emoji::new();
+            emote.id = "509392478491639828";
+            msg.react(emote);*/
+        }
+
+        if msg.content == "!hello" {
+            // The create message builder allows you to easily create embeds and messages
+            // using a builder syntax.
+            // This example will create a message that says "Hello, World!", with an embed that has
+            // a title, description, three fields, and footer.
+            if let Err(why) = msg.channel_id.send_message(|m| m
+                .content("Hello, World!")
+                .embed(|e| e
+                    .title("This is a title")
+                    .description("This is a description")
+                    .fields(vec![
+                        ("This is the first field", "This is a field body", true),
+                        ("This is the second field", "Both of these fields are inline", true),
+                    ])
+                    .field("This is the third field", "This is not an inline field", false)
+                    .footer(|f| f
+                        .text("This is a footer")))) {
+                println!("Error sending message: {:?}", why);
+            }
+        }
     }
 }
 
