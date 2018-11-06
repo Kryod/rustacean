@@ -69,6 +69,7 @@ fn main() {
             .prefix("~"))
         .command("ping", |c| c.cmd(commands::meta::ping))
         .command("multiply", |c| c.cmd(commands::math::multiply))
+        .command("exec", |c| c.cmd(commands::exec::exec))
         .command("quit", |c| c
             .cmd(commands::owner::quit)
             .owners_only(true)));
