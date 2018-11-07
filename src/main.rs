@@ -13,8 +13,8 @@
 #[macro_use] extern crate serenity;
 
 extern crate rand;
-extern crate env_logger;
-extern crate kankyo;
+extern crate simplelog;
+extern crate config;
 extern crate duct;
 extern crate regex;
 
@@ -26,8 +26,8 @@ use serenity::model::channel::Message;
 use serenity::model::gateway::Ready;
 use serenity::prelude::*;
 use serenity::http;
-use std::collections::HashSet;
-use std::env;
+use std::collections::{ HashSet, HashMap };
+use std::str::FromStr;
 
 struct Handler;
 
@@ -70,21 +70,35 @@ impl EventHandler for Handler {
     }
 }
 
+fn init_settings() -> HashMap<String, String> {
+    let mut settings = config::Config::default();
+    settings
+        .merge(config::File::with_name("config")).expect("Could not read configuration file")
+        .merge(config::Environment::with_prefix("RUST")).unwrap();
+    settings.try_into().expect("Could not deserialize configuration")
+}
+
+fn init_logging(settings: &HashMap<String, String>) {
+    use simplelog::{ CombinedLogger, Config, LevelFilter, TermLogger, WriteLogger };
+
+    let log_level_term = LevelFilter::from_str(settings["log_level_term"].as_ref()).expect("Invalid log level filter");
+    let log_level_file = LevelFilter::from_str(settings["log_level_file"].as_ref()).expect("Invalid log level filter");
+
+    let log_file = std::fs::File::create("rustacean.log").expect("Could not create log file");
+
+    CombinedLogger::init(
+        vec![
+            TermLogger::new(log_level_term, Config::default()).unwrap(),
+            WriteLogger::new(log_level_file, Config::default(), log_file),
+        ]
+    ).unwrap();
+}
+
 fn main() {
-    // This will load the environment variables located at `./.env`, relative to
-    // the CWD. See `./.env.example` for an example on how to structure this.
-    kankyo::load().expect("Failed to load .env file");
+    let settings = init_settings();
+    init_logging(&settings);
 
-    // Initialize the logger to use environment variables.
-    //
-    // In this case, a good default is setting the environment variable
-    // `RUST_LOG` to debug`.
-    env_logger::init().expect("Failed to initialize env_logger");
-
-    let token = env::var("DISCORD_TOKEN")
-        .expect("Expected a token in the environment");
-
-    let mut client = Client::new(&token, Handler).expect("Err creating client");
+    let mut client = Client::new(&settings["discord_token"], Handler).expect("Err creating client");
 
     let owners = match http::get_current_application_info() {
         Ok(info) => {

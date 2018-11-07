@@ -1,0 +1,5 @@
+discord_token = "NTA5MDUxMzc2NjU1OTI1MjU4.DsILYw.Ljw_6o_886_ukZZz_gLS9HkK1zE"
+
+# Declares the level of logging to use. Read the documentation for the `log` crate for more information.
+log_level_term = "Info"
+log_level_file = "Debug"
