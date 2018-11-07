@@ -4,131 +4,134 @@ use std::iter;
 use rand::Rng;
 use duct::cmd;
 use std::path::PathBuf;
+use std::collections::HashMap;
 use std::io::{ Error, ErrorKind };
 use std::time::{ Instant, Duration };
 use rand::distributions::Alphanumeric;
 
 command!(exec(_ctx, msg, _args) {
     let arg = msg.content.clone();
-    let mut code = arg.split("```")
-            .take(2)
-            .collect::<Vec<_>>()[1];
+    let code = arg.split("```")
+        .take(2)
+        .collect::<Vec<_>>()[1];
 
-    if code.get(0..1) == Some("C") || code.get(0..1) == Some("c") {
-        code = code.get(1 .. code.len()).unwrap();
+    let mut split = code.split("\n");
+    let (language, mut code) = match split.next() {
+        Some(line) => {
+            let code = split.collect::<Vec<_>>().join("\n");
+            let lang = line.trim().to_ascii_lowercase();
+            (lang, code)
+        },
+        None => {
+            let _ = msg.reply(":x: Please specify a language");
+            return Ok(());
+        },
+    };
 
-        let _ = msg.channel_id.say("C code!");
-        match save_code(code, "some_dir", ".c") {
-            Ok(path) => {
-                match run_code(path, "gcc".to_owned()) {
-                    Ok((compilation, execution)) => {
-                        let mut reply = String::new();
-                        if compilation.timed_out {
-                            // Compilation timed out
-                            reply = format!("{}\r\n:x: Compilation timed out", reply);
-                        } else if execution.timed_out {
-                            // Execution timed out
-                            reply = format!("{}\r\n:x: Execution timed out", reply);
-                        } else {
-                            // Didn't time out
-                            match compilation.exit_code {
-                                Some(code) if code != 0 => {
-                                    // Compilation failed
-                                    reply = format!("{}\r\n:x: Compilation failed: ``` {} ```", reply, compilation.stderr);
-                                },
-                                _ => {
-                                    // Compilation succeeded
-                                    if let Some(code) = execution.exit_code {
-                                        reply = format!("{}\r\nExit code: {}", reply, code);
-                                    }
-                                    if !execution.stdout.is_empty() {
-                                        reply = format!("{}\r\nStandard output: ``` {} ```", reply, execution.stdout);
-                                    }
-                                    if !execution.stderr.is_empty() {
-                                        reply = format!("{}\r\nError output: ``` {} ```", reply, execution.stderr);
-                                    }
-                                }
-                            };
-                        }
-                        if !reply.is_empty() {
-                            let header = format!("<@{}>,", msg.author.id);
-                            reply = format!("{}{}", header, reply);
-                            reply.truncate(2000);
-                            if let Err(e) = msg.channel_id.say(&reply) {
-                                eprintln!("An error occured while replying to an exec query: {}", e);
-                            }
-                        }
+    let (path, compiler) = match language.as_ref() {
+        "c" => {
+            if let Some(modified) = modif_code_c(&code) {
+                code = modified;
+            }
+            let path = match save_code(&code, "some_dir", ".c") {
+                Ok(path) => path,
+                Err(e) => {
+                    let _ = msg.channel_id.say(format!("Error: {}", e));
+                    eprintln!("Could not save code snippet: {}", e);
+                    return Ok(());
+                },
+            };
+            (path, "gcc")
+        },
+        "rs" | "rust" => {
+            if let Some(modified) = modif_code_rust(&code) {
+                code = modified;
+            }
+            let path = match save_code(&code, "some_dir", ".rs") {
+                Ok(path) => path,
+                Err(e) => {
+                    let _ = msg.channel_id.say(format!("Error: {}", e));
+                    eprintln!("Could not save code snippet: {}", e);
+                    return Ok(());
+                },
+            };
+            (path, "rustc")
+        },
+        _ => {
+            let _ = msg.channel_id.say(":x: Unknown programming language");
+            return Ok(());
+        }
+    };
+
+    match run_code(path, compiler) {
+        Ok((compilation, execution)) => {
+            let mut reply = String::new();
+            if compilation.timed_out {
+                // Compilation timed out
+                reply = format!("{}\r\n:x: Compilation timed out", reply);
+            } else if execution.timed_out {
+                // Execution timed out
+                reply = format!("{}\r\n:x: Execution timed out", reply);
+            } else {
+                // Didn't time out
+                match compilation.exit_code {
+                    Some(code) if code != 0 => {
+                        // Compilation failed
+                        reply = format!("{}\r\n:x: Compilation failed: ```\r\n{}```", reply, compilation.stderr);
                     },
-                    Err(e) => {
-                        let _ = msg.channel_id.say(format!("Error: {}", e));
-                        eprintln!("An error occurred while running code snippet: {}", e);
-                    },
+                    _ => {
+                        // Compilation succeeded
+                        if let Some(code) = execution.exit_code {
+                            reply = format!("{}\r\nExit code: {}", reply, code);
+                        }
+                        if !execution.stdout.is_empty() {
+                            reply = format!("{}\r\nStandard output: ```\r\n{}```", reply, execution.stdout);
+                        }
+                        if !execution.stderr.is_empty() {
+                            reply = format!("{}\r\nError output: ```\r\n{}```", reply, execution.stderr);
+                        }
+                    }
                 };
-            },
-            Err(e) => {
-                let _ = msg.channel_id.say(format!("Error: {}", e));
-                eprintln!("Could not save code snippet: {}", e);
-            },
-        };
-    } else if code.get(0..2) == Some("rs") ||  code.get(0..2) == Some("rust") {
-        code = code.get(2 .. code.len()).unwrap();
-
-        match save_code(code, "some_dir", ".rs") {
-            Ok(path) => {
-                match run_code(path, "rustc".to_owned()) {
-                    Ok((compilation, execution)) => {
-                        let mut reply = String::new();
-                        if compilation.timed_out {
-                            // Compilation timed out
-                            reply = format!("{}\r\n:x: Compilation timed out", reply);
-                        } else if execution.timed_out {
-                            // Execution timed out
-                            reply = format!("{}\r\n:x: Execution timed out", reply);
-                        } else {
-                            // Didn't time out
-                            match compilation.exit_code {
-                                Some(code) if code != 0 => {
-                                    // Compilation failed
-                                    reply = format!("{}\r\n:x: Compilation failed: ``` {} ```", reply, compilation.stderr);
-                                },
-                                _ => {
-                                    // Compilation succeeded
-                                    if let Some(code) = execution.exit_code {
-                                        reply = format!("{}\r\nExit code: {}", reply, code);
-                                    }
-                                    if !execution.stdout.is_empty() {
-                                        reply = format!("{}\r\nStandard output: ``` {} ```", reply, execution.stdout);
-                                    }
-                                    if !execution.stderr.is_empty() {
-                                        reply = format!("{}\r\nError output: ``` {} ```", reply, execution.stderr);
-                                    }
-                                }
-                            };
-                        }
-                        if !reply.is_empty() {
-                            let header = format!("<@{}>,", msg.author.id);
-                            reply = format!("{}{}", header, reply);
-                            reply.truncate(2000);
-                            if let Err(e) = msg.channel_id.say(&reply) {
-                                eprintln!("An error occured while replying to an exec query: {}", e);
-                            }
-                        }
-                    },
-                    Err(e) => {
-                        let _ = msg.channel_id.say(format!("Error: {}", e));
-                        eprintln!("An error occurred while running code snippet: {}", e);
-                    },
-                };
-            },
-            Err(e) => {
-                let _ = msg.channel_id.say(format!("Error: {}", e));
-                eprintln!("Could not save code snippet: {}", e);
-            },
-        };
-    } else {
-        let _ = msg.channel_id.say("PLIZ CODE IN RUST!");
-    }
+            }
+            if !reply.is_empty() {
+                let header = format!("<@{}>,", msg.author.id);
+                reply = format!("{}{}", header, reply);
+                reply.truncate(2000);
+                if let Err(e) = msg.channel_id.say(&reply) {
+                    eprintln!("An error occured while replying to an exec query: {}", e);
+                }
+            }
+        },
+        Err(e) => {
+            let _ = msg.channel_id.say(format!("Error: {}", e));
+            eprintln!("An error occurred while running code snippet: {}", e);
+        },
+    };
 });
+
+fn modif_code_c(code: &str) -> Option<String> {
+    use regex::Regex;
+
+    let re = Regex::new(r"int\s*main\s*\(.*\)").unwrap();
+    if !re.is_match(&code) {
+        let result = format!("int main() {{\r\n{}\r\n}}", code);
+        return Some(result);
+    }
+
+    None
+}
+
+fn modif_code_rust(code: &str) -> Option<String> {
+    use regex::Regex;
+
+    let re = Regex::new(r"fn\s*main\s*\(\s*\)").unwrap();
+    if !re.is_match(&code) {
+        let result = format!("fn main() {{\r\n{}\r\n}}", code);
+        return Some(result);
+    }
+
+    None
+}
 
 fn get_random_filename(ext: &str) -> String {
     let mut rng = ::rand::thread_rng();
@@ -168,13 +171,13 @@ struct CommandResult {
     pub timed_out: bool,
 }
 
-fn run_code(file_path: PathBuf, compilo: String) -> Result<(CommandResult, CommandResult), Error> {
+fn run_code(file_path: PathBuf, compiler: &str) -> Result<(CommandResult, CommandResult), Error> {
     let dir = file_path.parent().unwrap();
 
     let file_name = file_path.to_str().unwrap();
     let exe_name = format!("{}.out", file_name);
 
-    let compilation = run_with_timeout(10, cmd!(compilo, file_name, "-o", &exe_name).dir(dir).unchecked())?;
+    let compilation = run_with_timeout(10, cmd!(compiler, file_name, "-o", &exe_name).dir(dir).env_remove("RUST_LOG").unchecked())?;
     match compilation.exit_code {
         Some(code) if code != 0 => {
             // Short-circuit if something went wrong with the compilation
@@ -182,7 +185,7 @@ fn run_code(file_path: PathBuf, compilo: String) -> Result<(CommandResult, Comma
         },
         _ => {},
     };
-    let execution = run_with_timeout(10, cmd!(&exe_name).dir(dir).unchecked())?;
+    let execution = run_with_timeout(10, cmd!(&exe_name).dir(dir).env_remove("RUST_LOG").unchecked())?;
     Ok((compilation, execution))
 }
 
