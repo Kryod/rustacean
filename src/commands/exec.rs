@@ -4,7 +4,6 @@ use std::iter;
 use rand::Rng;
 use duct::cmd;
 use std::path::PathBuf;
-use std::collections::HashMap;
 use std::io::{ Error, ErrorKind };
 use std::time::{ Instant, Duration };
 use rand::distributions::Alphanumeric;
@@ -38,7 +37,7 @@ command!(exec(_ctx, msg, _args) {
                 Ok(path) => path,
                 Err(e) => {
                     let _ = msg.channel_id.say(format!("Error: {}", e));
-                    eprintln!("Could not save code snippet: {}", e);
+                    error!("Could not save code snippet: {}", e);
                     return Ok(());
                 },
             };
@@ -53,7 +52,7 @@ command!(exec(_ctx, msg, _args) {
                 Ok(path) => path,
                 Err(e) => {
                     let _ = msg.channel_id.say(format!("Error: {}", e));
-                    eprintln!("Could not save code snippet: {}", e);
+                    error!("Could not save code snippet: {}", e);
                     return Ok(());
                 },
             };
@@ -84,6 +83,12 @@ command!(exec(_ctx, msg, _args) {
                     },
                     _ => {
                         // Compilation succeeded
+                        if !compilation.stdout.is_empty() {
+                            reply = format!("{}\r\nCompilation output: ```\r\n{}```", reply, compilation.stdout);
+                        }
+                        if !compilation.stderr.is_empty() {
+                            reply = format!("{}\r\nCompilation error output: ```\r\n{}```", reply, compilation.stderr);
+                        }
                         if let Some(code) = execution.exit_code {
                             reply = format!("{}\r\nExit code: {}", reply, code);
                         }
@@ -102,7 +107,7 @@ command!(exec(_ctx, msg, _args) {
                 reply = format!("{}{}", header, reply);
                 reply.truncate(2000);
                 if let Err(e) = msg.channel_id.say(&reply) {
-                    eprintln!("An error occured while replying to an exec query: {}", e);
+                    error!("An error occured while replying to an exec query: {}", e);
                 }
             } else {
                 debug!("Output is empty");
@@ -110,7 +115,7 @@ command!(exec(_ctx, msg, _args) {
         },
         Err(e) => {
             let _ = msg.channel_id.say(format!("Error: {}", e));
-            eprintln!("An error occurred while running code snippet: {}", e);
+            error!("An error occurred while running code snippet: {}", e);
         },
     };
 
