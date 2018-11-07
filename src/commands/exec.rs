@@ -30,6 +30,7 @@ command!(exec(_ctx, msg, _args) {
 
     let (path, compiler) = match language.as_ref() {
         "c" => {
+            info!("Saving C code");
             if let Some(modified) = modif_code_c(&code) {
                 code = modified;
             }
@@ -44,6 +45,7 @@ command!(exec(_ctx, msg, _args) {
             (path, "gcc")
         },
         "rs" | "rust" => {
+            info!("Saving Rust code");
             if let Some(modified) = modif_code_rust(&code) {
                 code = modified;
             }
@@ -63,6 +65,7 @@ command!(exec(_ctx, msg, _args) {
         }
     };
 
+    info!("Compiling/Executing code");
     match run_code(path, compiler) {
         Ok((compilation, execution)) => {
             let mut reply = String::new();
@@ -93,6 +96,7 @@ command!(exec(_ctx, msg, _args) {
                     }
                 };
             }
+            info!("Checking Output");
             if !reply.is_empty() {
                 let header = format!("<@{}>,", msg.author.id);
                 reply = format!("{}{}", header, reply);
@@ -100,6 +104,8 @@ command!(exec(_ctx, msg, _args) {
                 if let Err(e) = msg.channel_id.say(&reply) {
                     eprintln!("An error occured while replying to an exec query: {}", e);
                 }
+            } else {
+                debug!("Output is empty");
             }
         },
         Err(e) => {
@@ -107,6 +113,8 @@ command!(exec(_ctx, msg, _args) {
             eprintln!("An error occurred while running code snippet: {}", e);
         },
     };
+
+    info!("Done");
 });
 
 fn modif_code_c(code: &str) -> Option<String> {
