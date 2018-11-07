@@ -2,11 +2,11 @@ use std::fs;
 use std::env;
 use std::iter;
 use rand::Rng;
+use duct::cmd;
 use std::path::PathBuf;
-use std::process::Command;
 use std::io::{ Error, ErrorKind };
+use std::time::{ Instant, Duration };
 use rand::distributions::Alphanumeric;
-
 
 command!(exec(_ctx, msg, _args) {
     let arg = msg.content.clone();
@@ -17,23 +17,57 @@ command!(exec(_ctx, msg, _args) {
     if code.get(0..2) != Some("rs") {
         let _ = msg.channel_id.say("PLIZ CODE IN RUST!");
     } else {
-
         code = code.get(2 .. code.len()).unwrap();
 
-        let path = match save_code(code, "some_dir") {
+        match save_code(code, "some_dir") {
             Ok(path) => {
                 match run_code(path) {
-                    Ok((stdout, stderr)) => {
-                        let _ = msg.channel_id.say(format!("stdout: {}", stdout));
-                        let _ = msg.channel_id.say(format!("stderr: {}", stderr));
+                    Ok((compilation, execution)) => {
+                        let mut reply = String::new();
+                        if compilation.timed_out {
+                            // Compilation timed out
+                            reply = format!("{}\r\n:x: Compilation timed out", reply);
+                        } else if execution.timed_out {
+                            // Execution timed out
+                            reply = format!("{}\r\n:x: Execution timed out", reply);
+                        } else {
+                            // Didn't time out
+                            match compilation.exit_code {
+                                Some(code) if code != 0 => {
+                                    // Compilation failed
+                                    reply = format!("{}\r\n:x: Compilation failed: ``` {} ```", reply, compilation.stderr);
+                                },
+                                _ => {
+                                    // Compilation succeeded
+                                    if let Some(code) = execution.exit_code {
+                                        reply = format!("{}\r\nExit code: {}", reply, code);
+                                    }
+                                    if !execution.stdout.is_empty() {
+                                        reply = format!("{}\r\nStandard output: ``` {} ```", reply, execution.stdout);
+                                    }
+                                    if !execution.stderr.is_empty() {
+                                        reply = format!("{}\r\nError output: ``` {} ```", reply, execution.stderr);
+                                    }
+                                }
+                            };
+                        }
+                        if !reply.is_empty() {
+                            let header = format!("<@{}>,", msg.author.id);
+                            reply = format!("{}{}", header, reply);
+                            reply.truncate(2000);
+                            if let Err(e) = msg.channel_id.say(&reply) {
+                                eprintln!("An error occured while replying to an exec query: {}", e);
+                            }
+                        }
                     },
                     Err(e) => {
+                        let _ = msg.channel_id.say(format!("Error: {}", e));
                         eprintln!("An error occurred while running code snippet: {}", e);
-                        let _ = msg.channel_id.say(format!("error: {}", e));
                     },
                 };
             },
             Err(e) => {
+                let _ = msg.channel_id.say(format!("Error: {}", e));
                 eprintln!("Could not save code snippet: {}", e);
             },
         };
@@ -70,30 +104,77 @@ fn save_code(code: &str, dir_name: &str) -> Result<PathBuf, Error> {
     Ok(path)
 }
 
-fn run_code(file_path: PathBuf) -> Result<(String, String), Error> {
-    let copy = file_path.clone();
-    let dir = copy.parent().unwrap();
+#[derive(Debug, Default)]
+struct CommandResult {
+    pub exit_code: Option<i32>,
+    pub stdout: String,
+    pub stderr: String,
+    pub timed_out: bool,
+}
 
-    let file_name = file_path.file_name().unwrap();
-    let exe_name = format!("{}.out", file_path.to_str().unwrap());
+fn run_code(file_path: PathBuf) -> Result<(CommandResult, CommandResult), Error> {
+    let dir = file_path.parent().unwrap();
 
-    Command::new("rustc")
-        .current_dir(dir)
-        .arg(file_name)
-        .arg("-o")
-        .arg(&exe_name)
-        .output()
-        .expect("Failed to execute rustc");
+    let file_name = file_path.to_str().unwrap();
+    let exe_name = format!("{}.out", file_name);
 
-    let output = Command::new(exe_name)
-        .current_dir(dir)
-        .output()?;
+    let compilation = run_with_timeout(10, cmd!("rustc", file_name, "-o", &exe_name).dir(dir).unchecked())?;
+    match compilation.exit_code {
+        Some(code) if code != 0 => {
+            // Short-circuit if something went wrong with the compilation
+            return Ok((compilation, CommandResult::default()));
+        },
+        _ => {},
+    };
+    let execution = run_with_timeout(10, cmd!(&exe_name).dir(dir))?;
+    Ok((compilation, execution))
+}
+
+fn run_with_timeout(timeout: u64, cmd: ::duct::Expression) -> Result<CommandResult, Error> {
+    let child = cmd
+        .stdout_capture()
+        .stderr_capture()
+        .start()?;
+
+    let timeout = Duration::from_secs(timeout);
+    let start = Instant::now();
+
+    loop {
+        match child.try_wait() {
+            Ok(Some(_)) => {
+                break;
+            },
+            Ok(None) => {},
+            Err(e) => return Err(e),
+        };
+
+        if start.elapsed() >= timeout {
+            child.kill()?;
+
+            return Ok(CommandResult {
+                exit_code: None,
+                stdout: "".into(),
+                stderr: "".into(),
+                timed_out: true,
+            });
+        }
+
+        ::std::thread::sleep(Duration::from_millis(250));
+    }
+
+    let output = child.wait()?;
+
     let stdout = ::std::str::from_utf8(&output.stdout)
-        .map_err(| e | Error::new(ErrorKind::InvalidData, e))
-        .map(| s | String::from(s))?;
+        .map_err(| e | Error::new(ErrorKind::InvalidData, e))?
+        .to_owned();
     let stderr = ::std::str::from_utf8(&output.stderr)
-        .map_err(| e | Error::new(ErrorKind::InvalidData, e))
-        .map(| s | String::from(s))?;
+        .map_err(| e | Error::new(ErrorKind::InvalidData, e))?
+        .to_owned();
 
-    Ok((stdout, stderr))
+    Ok(CommandResult {
+        exit_code: output.status.code(),
+        stdout,
+        stderr,
+        timed_out: false,
+    })
 }

@@ -11,6 +11,7 @@
 
 #[macro_use] extern crate log;
 #[macro_use] extern crate serenity;
+#[macro_use] extern crate duct;
 
 extern crate rand;
 extern crate env_logger;
