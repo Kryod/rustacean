@@ -21,6 +21,8 @@ extern crate typemap;
 
 mod commands;
 
+use ::commands::exec::*;
+
 use serenity::client::bridge::gateway::{ShardManager};
 use serenity::framework::standard::{ DispatchError, StandardFramework, help_commands};
 use serenity::model::event::ResumedEvent;
@@ -46,6 +48,25 @@ struct CommandCounter;
 
 impl Key for CommandCounter {
     type Value = HashMap<String, u64>;
+}
+
+struct LangManager;
+type LangManagerType = HashMap<String, Box<Language + Sync + Send>>;
+
+impl Key for LangManager {
+    type Value = LangManagerType;
+}
+
+impl LangManager {
+    fn default() -> LangManagerType {
+        let mut langs: LangManagerType = HashMap::new();
+
+        langs.insert("rust".into(), Box::new(Rust));
+        langs.insert("rs".into(), Box::new(Rust));
+        langs.insert("c".into(), Box::new(C));
+
+        langs
+    }
 }
 
 struct Handler;
@@ -129,10 +150,11 @@ fn main() {
         Err(why) => panic!("Couldn't get application info: {:?}", why),
     };
 
-     {
+    {
         let mut data = client.data.lock();
         data.insert::<CommandCounter>(HashMap::default());
         data.insert::<ShardManagerContainer>(Arc::clone(&client.shard_manager));
+        data.insert::<LangManager>(LangManager::default());
     }
 
     client.with_framework(StandardFramework::new()
