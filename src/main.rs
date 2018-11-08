@@ -17,10 +17,12 @@ extern crate simplelog;
 extern crate config;
 extern crate duct;
 extern crate regex;
+extern crate typemap;
 
 mod commands;
 
-use serenity::framework::StandardFramework;
+use serenity::client::bridge::gateway::{ShardManager};
+use serenity::framework::standard::{ DispatchError, StandardFramework, help_commands};
 use serenity::model::event::ResumedEvent;
 use serenity::model::channel::Message;
 use serenity::model::gateway::Ready;
@@ -28,6 +30,23 @@ use serenity::prelude::*;
 use serenity::http;
 use std::collections::{ HashSet, HashMap };
 use std::str::FromStr;
+use std::sync::Arc;
+use typemap::Key;
+
+// A container type is created for inserting into the Client's `data`, which
+// allows for data to be accessible across all events and framework commands, or
+// anywhere else that has a copy of the `data` Arc.
+struct ShardManagerContainer;
+
+impl Key for ShardManagerContainer {
+    type Value = Arc<Mutex<ShardManager>>;
+}
+
+struct CommandCounter;
+
+impl Key for CommandCounter {
+    type Value = HashMap<String, u64>;
+}
 
 struct Handler;
 
@@ -110,10 +129,60 @@ fn main() {
         Err(why) => panic!("Couldn't get application info: {:?}", why),
     };
 
+     {
+        let mut data = client.data.lock();
+        data.insert::<CommandCounter>(HashMap::default());
+        data.insert::<ShardManagerContainer>(Arc::clone(&client.shard_manager));
+    }
+
     client.with_framework(StandardFramework::new()
         .configure(|c| c
             .owners(owners)
             .prefix("~"))
+        // Set a function to be called prior to each command execution. This
+        // provides the context of the command, the message that was received,
+        // and the full name of the command that will be called.
+        //
+        // You can not use this to determine whether a command should be
+        // executed. Instead, `set_check` is provided to give you this
+        // functionality.
+        .before(|ctx, msg, command_name| {
+            debug!("Got command '{}' by user '{}'",
+                     command_name,
+                     msg.author.name);
+            // Increment the number of times this command has been run once. If
+            // the command's name does not exist in the counter, add a default
+            // value of 0.
+            let mut data = ctx.data.lock();
+            let counter = data.get_mut::<CommandCounter>().unwrap();
+            let entry = counter.entry(command_name.to_string()).or_insert(0);
+            *entry += 1;
+
+            true // if `before` returns false, command processing doesn't happen.
+        })
+        // Similar to `before`, except will be called directly _after_
+        // command execution.
+        .after(|_, _, command_name, error| {
+            match error {
+                Ok(()) => debug!("Processed command '{}'", command_name),
+                Err(why) => error!("Command '{}' returned error {:?}", command_name, why),
+            }
+        })
+        // Set a function that's called whenever an attempted command-call's
+        // command could not be found.
+        .unrecognised_command(|_, msg, unknown_command_name| {
+            error!("Could not find command named '{}'", unknown_command_name);
+            let _ = msg.channel_id.say(&format!("Could not find command named '{}'", unknown_command_name));
+        })
+        // Set a function that's called whenever a command's execution didn't complete for one
+        // reason or another. For example, when a user has exceeded a rate-limit or a command
+        // can only be performed by the bot owner.
+        .on_dispatch_error(|_ctx, msg, error| {
+            if let DispatchError::RateLimited(seconds) = error {
+                let _ = msg.channel_id.say(&format!("Try this again in {} seconds.", seconds));
+            }
+        })
+        .help(help_commands::with_embeds)
         .command("ping", |c| c.cmd(commands::meta::ping))
         .command("multiply", |c| c.cmd(commands::math::multiply))
         .command("exec", |c| c.cmd(commands::exec::exec))
