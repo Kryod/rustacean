@@ -74,6 +74,8 @@ impl LangManager {
         langs.insert("php".into(), Box::new(Php));
         langs.insert("py".into(), Box::new(Python));
         langs.insert("python".into(), Box::new(Python));
+        langs.insert("js".into(), Box::new(JavaScript));
+        langs.insert("javascript".into(), Box::new(JavaScript));
 
         langs
     }

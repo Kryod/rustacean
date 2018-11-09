@@ -24,6 +24,9 @@ pub use self::php::Php;
 mod python;
 pub use self::python::Python;
 
+mod js;
+pub use self::js::JavaScript;
+
 pub trait Language {
     fn get_lang_name(&self) -> String;
     fn get_source_file_ext(&self) -> String;
