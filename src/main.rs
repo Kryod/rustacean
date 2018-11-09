@@ -50,6 +50,12 @@ impl Key for CommandCounter {
     type Value = HashMap<String, u64>;
 }
 
+struct Settings;
+
+impl Key for Settings {
+    type Value = HashMap<String, String>;
+}
+
 struct LangManager;
 type LangManagerType = HashMap<String, Box<Language + Sync + Send>>;
 
@@ -140,6 +146,7 @@ fn init_logging(settings: &HashMap<String, String>) {
 
 fn main() {
     let settings = init_settings();
+    let command_prefix = settings["command_prefix"].clone();
     init_logging(&settings);
 
     let mut client = Client::new(&settings["discord_token"], Handler).expect("Err creating client");
@@ -157,6 +164,7 @@ fn main() {
     {
         let mut data = client.data.lock();
         data.insert::<CommandCounter>(HashMap::default());
+        data.insert::<Settings>(settings);
         data.insert::<ShardManagerContainer>(Arc::clone(&client.shard_manager));
         data.insert::<LangManager>(LangManager::default());
     }
@@ -164,7 +172,7 @@ fn main() {
     client.with_framework(StandardFramework::new()
         .configure(|c| c
             .owners(owners)
-            .prefix("~"))
+            .prefix(&command_prefix))
         // Set a function to be called prior to each command execution. This
         // provides the context of the command, the message that was received,
         // and the full name of the command that will be called.

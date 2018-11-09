@@ -51,7 +51,9 @@ command!(exec(ctx, msg, _args) {
     let arg = msg.content.clone();
     let split = arg.split("```");
     if split.clone().nth(1).is_none() {
-        let _ = msg.reply(r"Please add a code section to your message (\`\`\`language  **code**  \`\`\`)");
+        let mut data = ctx.data.lock();
+        let settings = data.get::<::Settings>().unwrap();
+        let _ = msg.reply(&format!("Please add a code section to your message\r\nExample:\r\n{}exec\r\n\\`\\`\\`language\r\n**code**\r\n\\`\\`\\`", settings["command_prefix"]));
         return Ok(());
     }
     let code = split
