@@ -89,7 +89,7 @@ command!(exec(ctx, msg, _args) {
     if let Some(modified) = lang.pre_process_code(&code) {
         code = modified;
     }
-    let path = match save_code(&code, "some_dir", &lang.get_source_file_ext()) {
+    let path = match save_code(&code, &msg.author, &lang.get_source_file_ext()) {
         Ok(path) => path,
         Err(e) => {
             let _ = msg.reply(&format!("Error: {}", e));
@@ -195,12 +195,13 @@ fn get_random_filename(ext: &str) -> String {
     name
 }
 
-fn save_code(code: &str, dir_name: &str, ext: &str) -> Result<PathBuf, Error> {
+fn save_code(code: &str, author: &serenity::model::user::User, ext: &str) -> Result<PathBuf, Error> {
     let mut path = PathBuf::new();
     let cwd = env::current_dir()?;
 
     path.push(&cwd);
-    path.push(dir_name);
+    path.push("snippets");
+    path.push(author.id.to_string());
     fs::create_dir_all(path.as_path())?;
 
     loop {
