@@ -15,11 +15,23 @@ pub use self::rust::Rust;
 mod c;
 pub use self::c::C;
 
+mod cpp;
+pub use self::cpp::Cpp;
+
+mod php;
+pub use self::php::Php;
+
+mod python;
+pub use self::python::Python;
+
 pub trait Language {
     fn get_lang_name(&self) -> String;
     fn get_source_file_ext(&self) -> String;
-    fn pre_process_code(&self, &str) -> Option<String>;
-    fn get_compiler_command(&self, _src_path: PathBuf, _exe_path: PathBuf) -> Option<Expression> {
+    fn pre_process_code(&self, &str) -> Option<String> {
+        None
+    }
+    fn get_compiler_command(&self, src_path: PathBuf, exe_path: PathBuf) -> Option<Expression> {
+        let _ = std::fs::copy(src_path, exe_path);
         None
     }
     fn get_execution_command(&self, path: PathBuf) -> Expression {
