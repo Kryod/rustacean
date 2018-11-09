@@ -49,7 +49,12 @@ pub struct CommandResult {
 
 command!(exec(ctx, msg, _args) {
     let arg = msg.content.clone();
-    let code = arg.split("```")
+    let split = arg.split("```");
+    if split.clone().nth(1).is_none() {
+        let _ = msg.reply(r"Please add a code section to your message (\`\`\`language  **code**  \`\`\`)");
+        return Ok(());
+    }
+    let code = split
         .take(2)
         .collect::<Vec<_>>()[1];
 
