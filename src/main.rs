@@ -64,6 +64,10 @@ impl LangManager {
         langs.insert("rust".into(), Box::new(Rust));
         langs.insert("rs".into(), Box::new(Rust));
         langs.insert("c".into(), Box::new(C));
+        langs.insert("cpp".into(), Box::new(Cpp));
+        langs.insert("php".into(), Box::new(Php));
+        langs.insert("py".into(), Box::new(Python));
+        langs.insert("python".into(), Box::new(Python));
 
         langs
     }
