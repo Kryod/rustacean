@@ -8,6 +8,7 @@ use std::io::{ Error, ErrorKind };
 use std::time::{ Instant, Duration };
 use rand::distributions::Alphanumeric;
 use duct::Expression;
+use std::collections::HashMap;
 
 mod rust;
 pub use self::rust::Rust;
@@ -54,9 +55,12 @@ command!(exec(ctx, msg, _args) {
     let arg = msg.content.clone();
     let split = arg.split("```");
     if split.clone().nth(1).is_none() {
+        //let mut data = ctx.data.lock();
         let mut data = ctx.data.lock();
+        let lang_manager = data.get::<::LangManager>().unwrap();
+        let langs = get_langs(&lang_manager);
         let settings = data.get::<::Settings>().unwrap();
-        let _ = msg.reply(&format!("Please add a code section to your message\r\nExample:\r\n{}exec\r\n\\`\\`\\`language\r\n**code**\r\n\\`\\`\\`", settings["command_prefix"]));
+        let _ = msg.reply(&format!("Please add a code section to your message\r\nExample:\r\n{}exec\r\n\\`\\`\\`language\r\n**code**\r\n\\`\\`\\`\nHere are the languages available: {}", settings["command_prefix"], langs));
         return Ok(());
     }
     let code = split
@@ -71,7 +75,10 @@ command!(exec(ctx, msg, _args) {
             (lang, code)
         },
         None => {
-            let _ = msg.reply(":x: Please specify a language");
+            let mut data = ctx.data.lock();
+            let lang_manager = data.get::<::LangManager>().unwrap();
+            let langs = get_langs(&lang_manager);
+            let _ = msg.reply(&format!(":x: Please specify a language\nHere are the languages available: {}", langs));
             return Ok(());
         },
     };
@@ -81,7 +88,8 @@ command!(exec(ctx, msg, _args) {
     let lang = match lang_manager.get(&lang_code) {
         Some(lang) => lang,
         None => {
-            let _ = msg.reply(":x: Unknown programming language");
+            let langs = get_langs(&lang_manager);
+            let _ = msg.reply(&format!(":x: Unknown programming language\nHere are the languages available: {}", langs));
             return Ok(());
         }
     };
@@ -193,6 +201,15 @@ fn get_random_filename(ext: &str) -> String {
     name.push_str(ext);
 
     name
+}
+
+fn get_langs(lang_manager: &HashMap<String, Box<Language + Sync + Send>>) -> String {
+    let mut langs: Vec<String> = Vec::new();
+    for lang in lang_manager.keys() {
+        langs.push(lang.clone());
+    }
+    langs.sort_by(|a, b| a.cmp(b));
+    langs.join(", ")
 }
 
 fn save_code(code: &str, author: &serenity::model::user::User, ext: &str) -> Result<PathBuf, Error> {
