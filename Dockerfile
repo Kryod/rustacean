@@ -1,4 +1,4 @@
-FROM rust:1.30.1-slim
+FROM arm32v7/rust:1.30.1-slim
 
 RUN apt-get update -y
 
