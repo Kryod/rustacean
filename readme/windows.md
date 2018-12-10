@@ -16,7 +16,7 @@ Install [Rust](https://win.rustup.rs/).
 
 ### OpenSSL
 
-Go to https://slproweb.com/products/Win32OpenSSL.html and download `Win64 OpenSSL v1.1.1a` or `Win32 OpenSSL v1.1.1` depending on your architecture.
+Go to https://slproweb.com/products/Win32OpenSSL.html and download `Win64 OpenSSL v1.x.x` or `Win32 OpenSSL v1.x.x` depending on your architecture.
 
 Run the installation and set the installation path that you chose as an `OPENSSL_DIR` environment variable.
 
@@ -29,7 +29,7 @@ You can support different optional languages:
 Go to https://osdn.net/projects/mingw/releases/, expand the "MinGW Installation Manager (mingw-get)" category.
 
 Download "mingw-get-setup.exe" and run the installation.
-Add your MinGW/bin installation directory to your `Path` environment variable (if you installed MinGW in `C:\MinGW` for example, add `C:\MinGW\bin` to your Path variable).
+Add your `MinGW\bin` installation directory to your `Path` environment variable (if you installed MinGW in `C:\MinGW` for example, add `C:\MinGW\bin` to your Path variable).
 
 Open a new `cmd` window.
 Run `mingw-get` to install the compilers:
@@ -53,7 +53,7 @@ Download and install [the latest supported Visual C runtime redistributable](htt
 
 Go to https://windows.php.net/download.
 
-Download the `VCxx x64 Thread Safe` archive if you chose the `vc_redist.x64.exe` or the `VC15 x86 Thread Safe` archive otherwise.
+Download the `VCxx x64 Thread Safe` archive if you chose the `vc_redist.x64.exe` or the `VCxx x86 Thread Safe` archive otherwise.
 
 Extract the contents of the archive and add the resulting directory to your `Path` environment variable.
 
@@ -62,6 +62,7 @@ Open a new `cmd` window and check if the PHP interpreter is working properly:
 C:\Users\Rustacean>php --version
 PHP 7.3.0 (cli) (built: Dec  6 2018 01:54:16) ( NTS MSVC15 (Visual C++ 2017) x64 )
 ...
+```
 
 #### Python
 
@@ -93,7 +94,7 @@ v10.14.1
 
 #### C#
 
-In the Windows Start Menu search bar, type "Visual Studio Installer" (which you should have installed since you installed the build tools in the first section).
+In the Windows Start Menu search bar, type "Visual Studio Installer" and run it (you should have it installed since you installed the build tools in the first section).
 
 Click on the "Modify" button.
 
