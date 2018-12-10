@@ -28,6 +28,9 @@ pub use self::python::Python;
 mod js;
 pub use self::js::JavaScript;
 
+mod csharp;
+pub use self::csharp::Csharp;
+
 pub trait Language {
     fn get_lang_name(&self) -> String;
     fn get_source_file_ext(&self) -> String;
