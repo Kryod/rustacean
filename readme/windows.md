@@ -8,7 +8,7 @@ Download the [Microsoft Visual C++ Build Tools](https://visualstudio.microsoft.c
 
 When installing, choose "Visual C++ build tools" in the "Workloads" tab.
 Also tick the optional feature "Windows SDK":
-![](prerequisites-windows-vstools.png)
+![](windows-vstools.png)
 
 
 Install [Rust](https://win.rustup.rs/).
