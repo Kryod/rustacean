@@ -15,6 +15,10 @@ impl Language for JavaScript {
     }
 
     fn get_execution_command(&self, path: PathBuf) -> Expression {
-        cmd!("nodejs", path)
+        if cfg!(windows) {
+            cmd!("node", path)
+        } else {
+            cmd!("nodejs", path)
+        }
     }
 }

@@ -15,6 +15,10 @@ impl Language for Python {
     }
 
     fn get_execution_command(&self, path: PathBuf) -> Expression {
-        cmd!("python3", path)
+        if cfg!(windows) {
+            cmd!("python", path)
+        } else {
+            cmd!("python3", path)
+        }
     }
 }
