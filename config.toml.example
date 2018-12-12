@@ -1,4 +1,4 @@
-discord_token = "NTA5MDUxMzc2NjU1OTI1MjU4.DsILYw.Ljw_6o_886_ukZZz_gLS9HkK1zE"
+discord_token = "<YOUR_DISCORD_APP_TOKEN>"
 command_prefix = "~"
 
 # Declares the level of logging to use. Read the documentation for the `log` crate for more information.
