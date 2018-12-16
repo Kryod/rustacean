@@ -108,6 +108,7 @@ struct Handler;
 impl EventHandler for Handler {
     fn ready(&self, _: Context, ready: Ready) {
         info!("Connected as {}", ready.user.name);
+        info!("Open this link in a web browser to invite {} to a Discord server:\r\nhttps://discordapp.com/oauth2/authorize?client_id={}&scope=bot&permissions=378944", ready.user.name, ready.user.id);
     }
 
     fn resume(&self, _: Context, _: ResumedEvent) {

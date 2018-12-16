@@ -34,6 +34,7 @@ Then, you can run the bot:
 ```sh
 user@machine:~/rustbot$ cargo run
 ```
+When the program starts running, an invite link will be printed out to add the bot to your Discord server.
 
 ### Docker
 
