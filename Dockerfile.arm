@@ -2,16 +2,17 @@ FROM arm32v7/rust:1.30.1-slim
 
 RUN apt-get update -y && apt-get install -y libssl-dev \
     pkg-config \
+    g++ \
     nodejs \
     php \
     apt-transport-https \
     dirmngr
 
-RUN apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 3FA7E0328081BFF6A14DA29AA6A19B38D3D831EF
+RUN apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 3FA7E0328081BFF6A14DA29AA6A19B38D3D831EF | echo yes
 
-RUN echo "deb https://download.mono-project.com/repo/debian stable-raspbianstretch main" | sudo tee /etc/apt/sources.list.d/mono-official-stable.list
+RUN echo "deb https://download.mono-project.com/repo/debian stable-raspbianstretch main" | tee /etc/apt/sources.list.d/mono-official-stable.list
 
-RUN apt-get update -y && apt-get install -y mono-devel 
+RUN apt-get update -y && apt-get install -y mono-devel --allow-unauthenticated
 
 COPY ./ /home
 
