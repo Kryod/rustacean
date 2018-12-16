@@ -57,7 +57,7 @@ impl Key for Settings {
 }
 
 struct LangManager;
-type LangManagerType = HashMap<String, Box<Language + Sync + Send>>;
+type LangManagerType = HashMap<Vec<String>, Arc<Box<Language + Sync + Send>>>;
 
 impl Key for LangManager {
     type Value = LangManagerType;
@@ -67,19 +67,39 @@ impl LangManager {
     fn default() -> LangManagerType {
         let mut langs: LangManagerType = HashMap::new();
 
-        langs.insert("rust".into(), Box::new(Rust));
-        langs.insert("rs".into(), Box::new(Rust));
-        langs.insert("c".into(), Box::new(C));
-        langs.insert("cpp".into(), Box::new(Cpp));
-        langs.insert("php".into(), Box::new(Php));
-        langs.insert("py".into(), Box::new(Python));
-        langs.insert("python".into(), Box::new(Python));
-        langs.insert("js".into(), Box::new(JavaScript));
-        langs.insert("javascript".into(), Box::new(JavaScript));
-        langs.insert("cs".into(), Box::new(Csharp));
-        langs.insert("csharp".into(), Box::new(Csharp));
+        langs.insert(vec![
+            "rust".into(),
+            "rs".into()
+        ], Arc::new(Box::new(Rust)));
+        langs.insert(vec!["c".into()], Arc::new(Box::new(C)));
+        langs.insert(vec!["cpp".into()], Arc::new(Box::new(Cpp)));
+        langs.insert(vec!["php".into()], Arc::new(Box::new(Php)));
+        langs.insert(vec![
+            "py".into(),
+            "python".into(),
+        ], Arc::new(Box::new(Python)));
+        langs.insert(vec![
+            "js".into(),
+            "javascript".into(),
+        ], Arc::new(Box::new(JavaScript)));
+        langs.insert(vec![
+            "cs".into(),
+            "csharp".into(),
+        ], Arc::new(Box::new(Csharp)));
+        langs.insert(vec!["java".into()], Arc::new(Box::new(Java)));
 
         langs
+    }
+
+    fn get(mngr: &LangManagerType, lang: &String) -> Option<Arc<Box<Language + Sync + Send>>> {
+        for (lang_codes, boxed_lang) in mngr.iter() {
+            for l in lang_codes {
+                if l == lang {
+                    return Some(boxed_lang.clone())
+                }
+            }
+        }
+        None
     }
 }
 

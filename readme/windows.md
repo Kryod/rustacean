@@ -29,7 +29,7 @@ You can support different optional languages:
 Go to https://osdn.net/projects/mingw/releases/, expand the "MinGW Installation Manager (mingw-get)" category.
 
 Download "mingw-get-setup.exe" and run the installation.
-Add your `MinGW\bin` installation directory to your `Path` environment variable (if you installed MinGW in `C:\MinGW` for example, add `C:\MinGW\bin` to your Path variable).
+Add your `MinGW\bin` installation directory to your `Path` environment variable (if you installed MinGW in `C:\MinGW` for example, add `C:\MinGW\bin` to your `Path` variable).
 
 Open a new `cmd` window.
 Run `mingw-get` to install the compilers:
@@ -111,4 +111,18 @@ Open a new `cmd` window and check if the compiler is working properly:
 ```cmd
 C:\Users\Rustacean>csc /version
 2.10.0.0 (b9fb1610)
+```
+
+#### Java
+
+Go to https://www.oracle.com/technetwork/java/javase/downloads/index.html, click on the first "Download" button.
+
+Click on the "Accept license agreement" radio button, download the `jdk-xx.x.x_windows-x64_bin.exe`, and run the installation.
+
+Add your `jdk\bin` installation directory to your `Path` environment variable (if you installed the jdk in `C:\Program Files\Java\jdk-11.0.1` for example, add `C:\Program Files\Java\jdk-11.0.1\bin` to your `Path` variable).
+
+Open a new `cmd` window and check if the compiler is working properly:
+```cmd
+C:\Users\Rustacean>javac -version
+javac 11.0.1
 ```

@@ -14,7 +14,7 @@ impl Language for Python {
         ".py".into()
     }
 
-    fn get_execution_command(&self, path: PathBuf) -> Expression {
+    fn get_execution_command(&self, path: &PathBuf) -> Expression {
         if cfg!(windows) {
             cmd!("python", path)
         } else {

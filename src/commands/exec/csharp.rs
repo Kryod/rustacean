@@ -14,7 +14,7 @@ impl Language for Csharp {
         ".cs".into()
     }
 
-    fn pre_process_code(&self, code: &str) -> Option<String> {
+    fn pre_process_code(&self, code: &str, _src_path: &PathBuf) -> Option<String> {
         use regex::Regex;
 
         let re = Regex::new(r"class\s*.*\s*\{\s*public\s*static\s*void\s*Main\s*\(\s*\)").unwrap();
@@ -35,7 +35,7 @@ public class Program
         None
     }
 
-    fn get_compiler_command(&self, src_path: PathBuf, exe_path: PathBuf) -> Option<Expression> {
+    fn get_compiler_command(&self, src_path: &PathBuf, exe_path: &PathBuf) -> Option<Expression> {
         let compiler;
         let out;
         let target;
@@ -54,7 +54,7 @@ public class Program
         Some(cmd!(compiler, out, target, nologo, src_path))
     }
 
-    fn get_execution_command(&self, path: PathBuf) -> Expression {
+    fn get_execution_command(&self, path: &PathBuf) -> Expression {
         if cfg!(windows) {
             cmd!(path)
         } else {

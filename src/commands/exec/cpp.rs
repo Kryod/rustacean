@@ -14,7 +14,7 @@ impl Language for Cpp {
         ".cpp".into()
     }
 
-    fn pre_process_code(&self, code: &str) -> Option<String> {
+    fn pre_process_code(&self, code: &str, _src_path: &PathBuf) -> Option<String> {
         use regex::Regex;
 
         let re = Regex::new(r"int\s*main\s*\(.*\)").unwrap();
@@ -26,7 +26,7 @@ impl Language for Cpp {
         None
     }
 
-    fn get_compiler_command(&self, src_path: PathBuf, exe_path: PathBuf) -> Option<Expression> {
+    fn get_compiler_command(&self, src_path: &PathBuf, exe_path: &PathBuf) -> Option<Expression> {
         Some(cmd!("g++", src_path, "-o", exe_path))
     }
 }

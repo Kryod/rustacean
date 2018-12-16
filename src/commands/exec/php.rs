@@ -14,7 +14,7 @@ impl Language for Php {
         ".php".into()
     }
 
-    fn get_execution_command(&self, path: PathBuf) -> Expression {
+    fn get_execution_command(&self, path: &PathBuf) -> Expression {
         cmd!("php", path)
     }
 }

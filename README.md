@@ -2,7 +2,7 @@
 
 Rustacean is a Discord bot that allows users to execute code snippets.
 
-Made with rust 🦀❤
+Made with Rust 🦀❤
 
 ## Getting Started
 

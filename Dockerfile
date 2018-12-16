@@ -4,9 +4,8 @@ RUN apt-get update -y && apt-get install -y libssl-dev \
     pkg-config \
     nodejs \
     php \
-    apt-transport-https \
-    dirmngr \ 
-    mono-devel 
+    mono-devel \
+    default-jdk 
 
 COPY ./ /home
 

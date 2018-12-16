@@ -14,7 +14,7 @@ impl Language for Rust {
         ".rs".into()
     }
 
-    fn pre_process_code(&self, code: &str) -> Option<String> {
+    fn pre_process_code(&self, code: &str, _src_path: &PathBuf) -> Option<String> {
         use regex::Regex;
 
         let re = Regex::new(r"fn\s*main\s*\(\s*\)").unwrap();
@@ -26,7 +26,7 @@ impl Language for Rust {
         None
     }
 
-    fn get_compiler_command(&self, src_path: PathBuf, exe_path: PathBuf) -> Option<Expression> {
+    fn get_compiler_command(&self, src_path: &PathBuf, exe_path: &PathBuf) -> Option<Expression> {
         Some(cmd!("rustc", src_path, "-o", exe_path))
     }
 }

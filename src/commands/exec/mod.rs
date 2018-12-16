@@ -8,7 +8,9 @@ use std::io::{ Error, ErrorKind };
 use std::time::{ Instant, Duration };
 use rand::distributions::Alphanumeric;
 use duct::Expression;
-use std::collections::HashMap;
+
+use LangManager;
+use LangManagerType;
 
 mod rust;
 pub use self::rust::Rust;
@@ -31,17 +33,24 @@ pub use self::js::JavaScript;
 mod csharp;
 pub use self::csharp::Csharp;
 
+mod java;
+pub use self::java::Java;
+
 pub trait Language {
     fn get_lang_name(&self) -> String;
     fn get_source_file_ext(&self) -> String;
-    fn pre_process_code(&self, &str) -> Option<String> {
+    fn get_out_path(&self, src_path: &PathBuf) -> PathBuf {
+        let path = format!("{}.out", src_path.to_str().unwrap());
+        PathBuf::from(path)
+    }
+    fn pre_process_code(&self, _code: &str, _src_path: &PathBuf) -> Option<String> {
         None
     }
-    fn get_compiler_command(&self, src_path: PathBuf, exe_path: PathBuf) -> Option<Expression> {
+    fn get_compiler_command(&self, src_path: &PathBuf, exe_path: &PathBuf) -> Option<Expression> {
         let _ = std::fs::copy(src_path, exe_path);
         None
     }
-    fn get_execution_command(&self, path: PathBuf) -> Expression {
+    fn get_execution_command(&self, path: &PathBuf) -> Expression {
         cmd!(path)
     }
 }
@@ -58,7 +67,6 @@ command!(exec(ctx, msg, _args) {
     let arg = msg.content.clone();
     let split = arg.split("```");
     if split.clone().nth(1).is_none() {
-        //let mut data = ctx.data.lock();
         let mut data = ctx.data.lock();
         let lang_manager = data.get::<::LangManager>().unwrap();
         let langs = get_langs(&lang_manager);
@@ -88,7 +96,7 @@ command!(exec(ctx, msg, _args) {
 
     let mut data = ctx.data.lock();
     let lang_manager = data.get_mut::<::LangManager>().unwrap();
-    let lang = match lang_manager.get(&lang_code) {
+    let lang = match LangManager::get(&lang_manager, &lang_code) {
         Some(lang) => lang,
         None => {
             let langs = get_langs(&lang_manager);
@@ -97,10 +105,7 @@ command!(exec(ctx, msg, _args) {
         }
     };
 
-    if let Some(modified) = lang.pre_process_code(&code) {
-        code = modified;
-    }
-    let path = match save_code(&code, &msg.author, &lang.get_source_file_ext()) {
+    let src_path = match save_code(&code, &msg.author, &lang.get_source_file_ext()) {
         Ok(path) => path,
         Err(e) => {
             let _ = msg.reply(&format!("Error: {}", e));
@@ -108,13 +113,18 @@ command!(exec(ctx, msg, _args) {
             return Ok(());
         },
     };
-    info!("Saved {} code in {}", lang.get_lang_name(), path.to_str().unwrap());
+    if let Some(modified) = lang.pre_process_code(&code, &src_path) {
+        match fs::write(src_path.as_path(), modified) {
+            Ok(_) => {},
+            Err(e) => error!("Could not save code snippet: {}", e),
+        };
+    }
+    info!("Saved {} code in {}", lang.get_lang_name(), src_path.to_str().unwrap());
 
     info!("Compiling/Executing {} code", lang.get_lang_name());
-    let out_path = format!("{}.out", path.to_str().unwrap());
-    let out_path = PathBuf::from(out_path);
-    let compilation = match lang.get_compiler_command(path, out_path.clone()) {
-        Some(command) => run_command(out_path.clone(), command),
+    let out_path = lang.get_out_path(&src_path);
+    let compilation = match lang.get_compiler_command(&src_path, &out_path) {
+        Some(command) => run_command(&src_path, command),
         None => Ok(CommandResult::default())
     };
     let compilation = match compilation {
@@ -134,7 +144,7 @@ command!(exec(ctx, msg, _args) {
         },
         _ => {
             // Compilation succeeded, run the snippet
-            match run_command(out_path.clone(), lang.get_execution_command(out_path)) {
+            match run_command(&src_path, lang.get_execution_command(&out_path)) {
                 Ok(res) => res,
                 Err(e) => {
                     let err = format!("An error occurred while running code snippet: {}", e);
@@ -197,19 +207,27 @@ command!(exec(ctx, msg, _args) {
 
 fn get_random_filename(ext: &str) -> String {
     let mut rng = ::rand::thread_rng();
-    let mut name: String = iter::repeat(())
-        .map(| _ | rng.sample(Alphanumeric))
-        .take(10)
-        .collect();
+    let mut name: String;
+    loop {
+        name = iter::repeat(())
+            .map(| _ | rng.sample(Alphanumeric))
+            .take(10)
+            .collect();
+        if name.chars().next().unwrap().is_alphabetic() {
+            break;
+        }
+    }
     name.push_str(ext);
 
     name
 }
 
-fn get_langs(lang_manager: &HashMap<String, Box<Language + Sync + Send>>) -> String {
+fn get_langs(lang_manager: &LangManagerType) -> String {
     let mut langs: Vec<String> = Vec::new();
-    for lang in lang_manager.keys() {
-        langs.push(lang.clone());
+    for lang_codes in lang_manager.keys() {
+        for lang in lang_codes {
+            langs.push(lang.clone());
+        }
     }
     langs.sort_by(|a, b| a.cmp(b));
     langs.join(", ")
@@ -235,12 +253,12 @@ fn save_code(code: &str, author: &serenity::model::user::User, ext: &str) -> Res
     Ok(path)
 }
 
-fn run_command(path: PathBuf, cmd: Expression) -> Result<CommandResult, Error> {
+fn run_command(path: &PathBuf, cmd: Expression) -> Result<CommandResult, Error> {
     let dir = path.parent().unwrap();
     let cmd = cmd.dir(dir).env_remove("RUST_LOG").unchecked();
-    let compilation = run_with_timeout(10, cmd)?;
+    let res = run_with_timeout(10, cmd)?;
 
-    Ok(compilation)
+    Ok(res)
 }
 
 fn run_with_timeout(timeout: u64, cmd: ::duct::Expression) -> Result<CommandResult, Error> {
