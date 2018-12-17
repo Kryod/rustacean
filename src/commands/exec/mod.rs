@@ -222,7 +222,7 @@ fn get_random_filename(ext: &str) -> String {
     name
 }
 
-fn get_langs(lang_manager: &LangManagerType) -> String {
+pub fn get_langs(lang_manager: &LangManagerType) -> String {
     let mut langs: Vec<String> = Vec::new();
     for lang_codes in lang_manager.keys() {
         for lang in lang_codes {
@@ -233,7 +233,7 @@ fn get_langs(lang_manager: &LangManagerType) -> String {
     langs.join(", ")
 }
 
-fn save_code(code: &str, author: &serenity::model::user::User, ext: &str) -> Result<PathBuf, Error> {
+pub fn save_code(code: &str, author: &serenity::model::user::User, ext: &str) -> Result<PathBuf, Error> {
     let mut path = PathBuf::new();
     let cwd = env::current_dir()?;
 
@@ -253,7 +253,7 @@ fn save_code(code: &str, author: &serenity::model::user::User, ext: &str) -> Res
     Ok(path)
 }
 
-fn run_command(path: &PathBuf, cmd: Expression) -> Result<CommandResult, Error> {
+pub fn run_command(path: &PathBuf, cmd: Expression) -> Result<CommandResult, Error> {
     let dir = path.parent().unwrap();
     let cmd = cmd.dir(dir).env_remove("RUST_LOG").unchecked();
     let res = run_with_timeout(10, cmd)?;

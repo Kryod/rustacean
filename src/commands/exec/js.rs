@@ -17,6 +17,8 @@ impl Language for JavaScript {
     fn get_execution_command(&self, path: &PathBuf) -> Expression {
         if cfg!(windows) {
             cmd!("node", path)
+        } else if cfg!(target_os="macos") {
+            cmd!("node", path)
         } else {
             cmd!("nodejs", path)
         }
