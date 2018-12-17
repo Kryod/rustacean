@@ -11,7 +11,5 @@ addons:
       - mono-nightly
     packages:
       - mono-devel
+      - lua5.3
 
-before_install:
-  - pip install hererocks
-  - hererocks lua53 -l5.3 -rlatest
