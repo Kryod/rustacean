@@ -67,7 +67,7 @@ public class Program
         if cfg!(windows) {
             cmd!("csc", "/version")
         } else {
-            cmd!("mcs", "-version")
+            cmd!("mcs", "--version")
         }
     }
 }

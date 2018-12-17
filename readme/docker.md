@@ -26,5 +26,5 @@ user@machine:~$ docker build -t rustacean .
 
 Now you want this image to run on a server or something that will be on 24/7. You will probably want to have access to the logs of the bot if it crashes so you need to link the rustacean.log (which do not exist in this repository so do `touch rustacean.log`) to the rustacean.log file on the docker.
 ```sh
-user@machine:~$ docker run -t -v /path/to/rustacean/rustacean.log:/home/rustacean.log rustacean
+user@machine:~$ docker run -t --restart="always" -d -v /path/to/rustacean/rustacean.log:/home/rustacean.log rustacean
 ```
