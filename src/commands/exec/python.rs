@@ -6,6 +6,16 @@ use duct::{ cmd, Expression };
 #[derive(Debug)]
 pub struct Python;
 
+impl Python {
+    fn get_interpreter(&self) -> String {
+        if cfg!(windows) {
+            "python".into()
+        } else {
+            "python3".into()
+        }
+    }
+}
+
 impl Language for Python {
     fn get_lang_name(&self) -> String {
         "Python".into()
@@ -16,10 +26,10 @@ impl Language for Python {
     }
 
     fn get_execution_command(&self, path: &PathBuf) -> Expression {
-        if cfg!(windows) {
-            cmd!("python", path)
-        } else {
-            cmd!("python3", path)
-        }
+        cmd!(self.get_interpreter(), path)
+    }
+
+    fn check_compiler_or_interpreter(&self) -> Expression {
+        cmd!(self.get_interpreter(), "--version")
     }
 }

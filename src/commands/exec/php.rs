@@ -18,4 +18,8 @@ impl Language for Php {
     fn get_execution_command(&self, path: &PathBuf) -> Expression {
         cmd!("php", path)
     }
+
+    fn check_compiler_or_interpreter(&self) -> Expression {
+        cmd!("php", "--version")
+    }
 }

@@ -62,4 +62,12 @@ public class Program
             cmd!("mono", path)
         }
     }
+
+    fn check_compiler_or_interpreter(&self) -> Expression {
+        if cfg!(windows) {
+            cmd!("csc", "/version")
+        } else {
+            cmd!("mcs", "--version")
+        }
+    }
 }

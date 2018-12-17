@@ -26,4 +26,8 @@ impl Language for Asm {
         Some(cmd!("nasm", "-f", "elf64", src_path)
             .then(cmd!("ld", format!("{}.o", self.get_file_name(src_path)),"-o", exe_path)))
     }
+
+    fn check_compiler_or_interpreter(&self) -> Expression {
+        cmd!("nasm", "--version")
+    }
 }

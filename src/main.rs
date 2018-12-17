@@ -30,11 +30,11 @@ use serenity::framework::standard::{ DispatchError, StandardFramework, help_comm
 use serenity::model::event::ResumedEvent;
 use serenity::model::channel::Message;
 use serenity::model::gateway::Ready;
-use serenity::prelude::*;
+use serenity::prelude::{ Client, Context, EventHandler };
 use serenity::http;
 use std::collections::{ HashSet, HashMap };
 use std::str::FromStr;
-use std::sync::Arc;
+use std::sync::{ Arc, Mutex };
 use typemap::Key;
 
 // A container type is created for inserting into the Client's `data`, which
@@ -43,7 +43,7 @@ use typemap::Key;
 struct ShardManagerContainer;
 
 impl Key for ShardManagerContainer {
-    type Value = Arc<Mutex<ShardManager>>;
+    type Value = Arc<serenity::prelude::Mutex<ShardManager>>;
 }
 
 struct CommandCounter;
@@ -67,20 +67,24 @@ impl EventHandler for Handler {
 
         let ctx = Arc::new(Mutex::new(ctx));
         std::thread::spawn(move || {
-            let lang_mgr = LangManager::default();
-            let langs = LangManager::get_langs(&lang_mgr);
+            let langs = {
+                let ctx = ctx.lock().unwrap();
+                let data = ctx.data.lock();
+                let lang_mgr = data.get::<LangManager>().unwrap().lock().unwrap();
+                lang_mgr.get_languages_list()
+            };
 
             loop {
-                set_game_presence_help(&ctx.lock());
+                set_game_presence_help(&ctx.lock().unwrap());
                 std::thread::sleep(std::time::Duration::from_secs(30));
 
-                set_game_presence_languages(&ctx.lock());
+                set_game_presence_languages(&ctx.lock().unwrap());
                 std::thread::sleep(std::time::Duration::from_secs(30));
 
-                set_game_presence_exec(&ctx.lock());
+                set_game_presence_exec(&ctx.lock().unwrap());
                 std::thread::sleep(std::time::Duration::from_secs(30));
 
-                set_game_presence(&ctx.lock(), &format!("Available languages: {}", langs));
+                set_game_presence(&ctx.lock().unwrap(), &format!("Available languages: {}", langs));
                 std::thread::sleep(std::time::Duration::from_secs(30));
             }
         });
@@ -161,12 +165,14 @@ fn main() {
         Err(why) => panic!("Couldn't get application info: {:?}", why),
     };
 
+    let lang_manager = LangManager::new();
+
     {
         let mut data = client.data.lock();
         data.insert::<CommandCounter>(HashMap::default());
         data.insert::<Settings>(settings);
         data.insert::<ShardManagerContainer>(Arc::clone(&client.shard_manager));
-        data.insert::<LangManager>(LangManager::default());
+        data.insert::<LangManager>(Arc::new(Mutex::new(lang_manager)));
     }
 
     client.with_framework(StandardFramework::new()
