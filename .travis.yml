@@ -11,6 +11,7 @@ addons:
       - mono-nightly
     packages:
       - mono-devel
+      - nodejs
 
 before_install:
   - echo "deb http://deb.debian.org/debian jessie-backports main" > /etc/apt/sources.list
