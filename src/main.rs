@@ -23,7 +23,7 @@ mod commands;
 
 use ::commands::exec::*;
 
-use serenity::client::bridge::gateway::{ShardManager};
+use serenity::client::bridge::gateway::{ ShardManager };
 use serenity::framework::standard::{ DispatchError, StandardFramework, help_commands};
 use serenity::model::event::ResumedEvent;
 use serenity::model::channel::Message;
@@ -106,9 +106,29 @@ impl LangManager {
 struct Handler;
 
 impl EventHandler for Handler {
-    fn ready(&self, _: Context, ready: Ready) {
+    fn ready(&self, ctx: Context, ready: Ready) {
         info!("Connected as {}", ready.user.name);
         info!("Open this link in a web browser to invite {} to a Discord server:\r\nhttps://discordapp.com/oauth2/authorize?client_id={}&scope=bot&permissions=378944", ready.user.name, ready.user.id);
+
+        let ctx = Arc::new(Mutex::new(ctx));
+        std::thread::spawn(move || {
+            let lang_mgr = LangManager::default();
+            let langs = commands::exec::get_langs(&lang_mgr);
+
+            loop {
+                set_game_presence_help(&ctx.lock());
+                std::thread::sleep(std::time::Duration::from_secs(30));
+
+                set_game_presence_languages(&ctx.lock());
+                std::thread::sleep(std::time::Duration::from_secs(30));
+
+                set_game_presence_exec(&ctx.lock());
+                std::thread::sleep(std::time::Duration::from_secs(30));
+
+                set_game_presence(&ctx.lock(), &format!("Available languages: {}", langs));
+                std::thread::sleep(std::time::Duration::from_secs(30));
+            }
+        });
     }
 
     fn resume(&self, _: Context, _: ResumedEvent) {
@@ -253,4 +273,31 @@ fn main() {
     if let Err(why) = client.start() {
         error!("Client error: {:?}", why);
     }
+}
+
+fn get_command_prefix(ctx: &Context) -> String {
+    let data = ctx.data.lock();
+    let settings = data.get::<Settings>().unwrap();
+    settings["command_prefix"].clone()
+}
+
+fn set_game_presence_help(ctx: &Context) {
+    let prefix = get_command_prefix(ctx);
+    set_game_presence(ctx, &format!("Type {}help to get a list of available commands", prefix));
+}
+
+fn set_game_presence_languages(ctx: &Context) {
+    let prefix = get_command_prefix(ctx);
+    set_game_presence(ctx, &format!("Type {}languages to get a list of available languages", prefix));
+}
+
+fn set_game_presence_exec(ctx: &Context) {
+    let prefix = get_command_prefix(ctx);
+    set_game_presence(ctx, &format!("Type {}exec ```language code``` to run a code snippet", prefix));
+}
+
+fn set_game_presence(ctx: &Context, game_name: &str) {
+    let game = serenity::model::gateway::Game::playing(game_name);
+    let status = serenity::model::user::OnlineStatus::Online;
+    ctx.set_presence(Some(game), status);
 }

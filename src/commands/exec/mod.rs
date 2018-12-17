@@ -222,7 +222,7 @@ fn get_random_filename(ext: &str) -> String {
     name
 }
 
-fn get_langs(lang_manager: &LangManagerType) -> String {
+pub fn get_langs(lang_manager: &LangManagerType) -> String {
     let mut langs: Vec<String> = Vec::new();
     for lang_codes in lang_manager.keys() {
         for lang in lang_codes {
