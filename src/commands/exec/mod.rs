@@ -2,15 +2,15 @@ use std::fs;
 use std::env;
 use std::iter;
 use rand::Rng;
-use duct::cmd;
 use std::path::PathBuf;
 use std::io::{ Error, ErrorKind };
 use std::time::{ Instant, Duration };
 use rand::distributions::Alphanumeric;
 use duct::Expression;
 
-use LangManager;
-use LangManagerType;
+use lang_manager::LangManager;
+
+pub mod language;
 
 mod rust;
 pub use self::rust::Rust;
@@ -36,25 +36,6 @@ pub use self::csharp::Csharp;
 mod java;
 pub use self::java::Java;
 
-pub trait Language {
-    fn get_lang_name(&self) -> String;
-    fn get_source_file_ext(&self) -> String;
-    fn get_out_path(&self, src_path: &PathBuf) -> PathBuf {
-        let path = format!("{}.out", src_path.to_str().unwrap());
-        PathBuf::from(path)
-    }
-    fn pre_process_code(&self, _code: &str, _src_path: &PathBuf) -> Option<String> {
-        None
-    }
-    fn get_compiler_command(&self, src_path: &PathBuf, exe_path: &PathBuf) -> Option<Expression> {
-        let _ = std::fs::copy(src_path, exe_path);
-        None
-    }
-    fn get_execution_command(&self, path: &PathBuf) -> Expression {
-        cmd!(path)
-    }
-}
-
 #[derive(Debug, Default)]
 pub struct CommandResult {
     pub exit_code: Option<i32>,
@@ -69,7 +50,7 @@ command!(exec(ctx, msg, _args) {
     if split.clone().nth(1).is_none() {
         let mut data = ctx.data.lock();
         let lang_manager = data.get::<::LangManager>().unwrap();
-        let langs = get_langs(&lang_manager);
+        let langs = LangManager::get_langs(&lang_manager);
         let settings = data.get::<::Settings>().unwrap();
         let _ = msg.reply(&format!("Please add a code section to your message\r\nExample:\r\n{}exec\r\n\\`\\`\\`language\r\n**code**\r\n\\`\\`\\`\nHere are the languages available: {}", settings["command_prefix"], langs));
         return Ok(());
@@ -88,7 +69,7 @@ command!(exec(ctx, msg, _args) {
         None => {
             let mut data = ctx.data.lock();
             let lang_manager = data.get::<::LangManager>().unwrap();
-            let langs = get_langs(&lang_manager);
+            let langs = LangManager::get_langs(&lang_manager);
             let _ = msg.reply(&format!(":x: Please specify a language\nHere are the languages available: {}", langs));
             return Ok(());
         },
@@ -99,7 +80,7 @@ command!(exec(ctx, msg, _args) {
     let lang = match LangManager::get(&lang_manager, &lang_code) {
         Some(lang) => lang,
         None => {
-            let langs = get_langs(&lang_manager);
+            let langs = LangManager::get_langs(&lang_manager);
             let _ = msg.reply(&format!(":x: Unknown programming language\nHere are the languages available: {}", langs));
             return Ok(());
         }
@@ -220,17 +201,6 @@ fn get_random_filename(ext: &str) -> String {
     name.push_str(ext);
 
     name
-}
-
-pub fn get_langs(lang_manager: &LangManagerType) -> String {
-    let mut langs: Vec<String> = Vec::new();
-    for lang_codes in lang_manager.keys() {
-        for lang in lang_codes {
-            langs.push(lang.clone());
-        }
-    }
-    langs.sort_by(|a, b| a.cmp(b));
-    langs.join(", ")
 }
 
 pub fn save_code(code: &str, author: &serenity::model::user::User, ext: &str) -> Result<PathBuf, Error> {

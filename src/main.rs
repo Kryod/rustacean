@@ -20,9 +20,10 @@ extern crate regex;
 extern crate typemap;
 
 pub mod commands;
+pub mod lang_manager;
 mod test;
 
-use ::commands::exec::*;
+use lang_manager::LangManager;
 
 use serenity::client::bridge::gateway::{ ShardManager };
 use serenity::framework::standard::{ DispatchError, StandardFramework, help_commands};
@@ -57,53 +58,6 @@ impl Key for Settings {
     type Value = HashMap<String, String>;
 }
 
-struct LangManager;
-type LangManagerType = HashMap<Vec<String>, Arc<Box<Language + Sync + Send>>>;
-
-impl Key for LangManager {
-    type Value = LangManagerType;
-}
-
-impl LangManager {
-    fn default() -> LangManagerType {
-        let mut langs: LangManagerType = HashMap::new();
-
-        langs.insert(vec![
-            "rust".into(),
-            "rs".into()
-        ], Arc::new(Box::new(Rust)));
-        langs.insert(vec!["c".into()], Arc::new(Box::new(C)));
-        langs.insert(vec!["cpp".into()], Arc::new(Box::new(Cpp)));
-        langs.insert(vec!["php".into()], Arc::new(Box::new(Php)));
-        langs.insert(vec![
-            "py".into(),
-            "python".into(),
-        ], Arc::new(Box::new(Python)));
-        langs.insert(vec![
-            "js".into(),
-            "javascript".into(),
-        ], Arc::new(Box::new(JavaScript)));
-        langs.insert(vec![
-            "cs".into(),
-            "csharp".into(),
-        ], Arc::new(Box::new(Csharp)));
-        langs.insert(vec!["java".into()], Arc::new(Box::new(Java)));
-
-        langs
-    }
-
-    fn get(mngr: &LangManagerType, lang: &String) -> Option<Arc<Box<Language + Sync + Send>>> {
-        for (lang_codes, boxed_lang) in mngr.iter() {
-            for l in lang_codes {
-                if l == lang {
-                    return Some(boxed_lang.clone())
-                }
-            }
-        }
-        None
-    }
-}
-
 struct Handler;
 
 impl EventHandler for Handler {
@@ -114,7 +68,7 @@ impl EventHandler for Handler {
         let ctx = Arc::new(Mutex::new(ctx));
         std::thread::spawn(move || {
             let lang_mgr = LangManager::default();
-            let langs = commands::exec::get_langs(&lang_mgr);
+            let langs = LangManager::get_langs(&lang_mgr);
 
             loop {
                 set_game_presence_help(&ctx.lock());

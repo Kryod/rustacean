@@ -1,5 +1,6 @@
-use ::Language;
 use std::path::PathBuf;
+
+use commands::exec::language::Language;
 use duct::{ cmd, Expression };
 
 #[derive(Debug)]

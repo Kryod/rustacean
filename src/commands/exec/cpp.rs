@@ -1,5 +1,6 @@
-use ::Language;
 use std::path::PathBuf;
+
+use commands::exec::language::Language;
 use duct::{ cmd, Expression };
 
 #[derive(Debug)]
@@ -19,7 +20,7 @@ impl Language for Cpp {
 
         let re = Regex::new(r"int\s*main\s*\(.*\)").unwrap();
         if !re.is_match(&code) {
-            let result = format!("int main(int argc, char* argv[]) {{\r\n{}\r\n}}", code);
+            let result = format!("#include <iostream>\r\nint main(int argc, char* argv[]) {{\r\n{}\r\n}}", code);
             return Some(result);
         }
 

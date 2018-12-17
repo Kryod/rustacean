@@ -3,13 +3,14 @@ use std::fs;
 
 use ::commands;
 
-fn test_lang(code: String, lang: String, ret_code: i32, ret_str: String){
+#[allow(dead_code)]
+fn test_lang(code: String, lang: String, ret_code: i32, ret_str: String) {
     let lang_manager = LangManager::default();
     let code = code;
     let lang = match LangManager::get(&lang_manager, &lang){
         Some(lang) => lang,
         None => {
-            let langs = commands::exec::get_langs(&lang_manager);
+            let langs = LangManager::get_langs(&lang_manager);
             panic!(":x: Unknown programming language\nHere are the languages available: {}", langs);
         }
     };
@@ -94,52 +95,44 @@ fn test_lang(code: String, lang: String, ret_code: i32, ret_str: String){
 }
 
 #[test]
-fn test_rust(){
-     
-    test_lang(String::from("println!(\"test\");"), String::from("rust"), 0, String::from("test\n"));
-    test_lang(String::from("fn main() { println!(\"test\"); }"), String::from("rust"), 0, String::from("test\n"));
+fn test_rust() {
+    test_lang(String::from("print!(\"test\");"), String::from("rust"), 0, String::from("test"));
+    test_lang(String::from("fn main() { print!(\"test\"); }"), String::from("rust"), 0, String::from("test"));
 }
 
 #[test]
-fn test_c(){
-     
-    test_lang(String::from("return 5;"), String::from("c"), 5, String::from(""));
-    test_lang(String::from("#include<stdio.h>\n int main() { \nprintf(\"test\");\n return 0;\n }"), String::from("c"), 0, String::from("test"));
+fn test_c() {
+    test_lang(String::from("printf(\"test\");\nreturn 5;"), String::from("c"), 5, String::from("test"));
+    test_lang(String::from("#include <stdio.h>\n int main() { \nprintf(\"test\");\n return 0;\n }"), String::from("c"), 0, String::from("test"));
 }
 
 #[test]
-fn test_cpp(){
-     
-    test_lang(String::from("return 5;"), String::from("cpp"), 5, String::from(""));
-    test_lang(String::from("#include<iostream>\n int main() { \nstd::cout << \"test\";\n return 0;\n }"), String::from("cpp"), 0, String::from("test"));
+fn test_cpp() {
+    test_lang(String::from("std::cout << \"test\";\nreturn 5;"), String::from("cpp"), 5, String::from("test"));
+    test_lang(String::from("#include <iostream>\n int main() { \nstd::cout << \"test\";\n return 0;\n }"), String::from("cpp"), 0, String::from("test"));
 }
 
 #[test]
-fn test_python(){
-     
-    test_lang(String::from("print(\"test\")"), String::from("python"), 0, String::from("test\n"));
+fn test_python() {
+    test_lang(String::from("print(\"test\", end=\"\")"), String::from("python"), 0, String::from("test"));
 }
 
 #[test]
-fn test_php(){
-     
-    test_lang(String::from("<?php echo \"test\";"), String::from("php"), 0, String::from("test"));
+fn test_php() {
+    test_lang(String::from("abc <?php echo \"test\";"), String::from("php"), 0, String::from("abc test"));
 }
 
 #[test]
-fn test_javascript(){
-     
-    test_lang(String::from("console.log(\"test\");"), String::from("javascript"), 0, String::from("test\n"));
+fn test_javascript() {
+    test_lang(String::from("process.stdout.write(\"test\");"), String::from("javascript"), 0, String::from("test"));
 }
 
 #[test]
-fn test_csharp(){
-     
-    test_lang(String::from("Console.WriteLine(\"test\");"), String::from("cs"), 0, String::from("test\n"));
+fn test_csharp() {
+    test_lang(String::from("Console.Write(\"test\");"), String::from("cs"), 0, String::from("test"));
 }
 
 #[test]
-fn test_java(){
-     
-    test_lang(String::from("System.out.println(\"test\");"), String::from("java"), 0, String::from("test\n"));
+fn test_java() {
+    test_lang(String::from("System.out.print(\"test\");"), String::from("java"), 0, String::from("test"));
 }
