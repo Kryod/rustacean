@@ -27,6 +27,6 @@ impl Language for Asm {
     }
 
     fn check_compiler_or_interpreter(&self) -> Expression {
-        cmd!("nasm", "--version")
+        cmd!("nasm", "-version").then(cmd!("ld", "-version"))
     }
 }
