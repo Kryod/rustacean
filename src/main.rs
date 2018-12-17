@@ -223,13 +223,20 @@ fn main() {
             }
         })
         .help(help_commands::with_embeds)
+        // Time out for exec: Can't be used more than 2 times per 30 seconds, with a 5 second delay
+        //.bucket("exec_bucket", 5, 30, 2)
+        // Can't be used more than once per 5 seconds:
+        .simple_bucket("exec_bucket", 5)
         .command("ping", |c| c.cmd(commands::meta::ping))
         .command("multiply", |c| c.cmd(commands::math::multiply))
-        .command("exec", |c| c.cmd(commands::exec::exec))
+        .command("exec", |c| c
+            .bucket("exec_bucket")
+            .cmd(commands::exec::exec))
         .command("languages", |c| c.cmd(commands::languages::languages))
         .command("quit", |c| c
             .cmd(commands::owner::quit)
-            .owners_only(true)));
+            .owners_only(true))
+        );
 
     if let Err(why) = client.start() {
         error!("Client error: {:?}", why);
