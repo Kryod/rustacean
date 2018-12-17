@@ -209,12 +209,16 @@ fn get_random_filename(ext: &str) -> String {
     name
 }
 
+pub fn get_snippets_directory() -> PathBuf {
+    PathBuf::from("snippets")
+}
+
 pub fn save_code(code: &str, author: &serenity::model::user::User, ext: &str) -> Result<PathBuf, Error> {
     let mut path = PathBuf::new();
     let cwd = env::current_dir()?;
 
     path.push(&cwd);
-    path.push("snippets");
+    path.push(get_snippets_directory());
     path.push(author.id.to_string());
     fs::create_dir_all(path.as_path())?;
 

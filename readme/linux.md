@@ -51,3 +51,9 @@ $ sudo apt-get install -y mono-devel
 ```bash
 $ sudo apt-get install -y default-jdk
 ```
+
+#### Lua
+
+```bash
+$ sudo apt-get install -y lua5.3 lua-socket lua-sec
+```
