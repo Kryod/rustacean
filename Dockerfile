@@ -12,7 +12,8 @@ RUN apt-get update -y && apt-get install -y libssl-dev \
     lua5.3 \
     lua-socket \
     lua-sec \
-    openjdk-8-jdk 
+    openjdk-8-jdk \
+    nasm
 
 COPY ./ /home
 

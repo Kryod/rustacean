@@ -24,7 +24,9 @@ impl LangManager {
         langs.insert(vec!["cpp".into()], Arc::new(Box::new(Cpp)));
         langs.insert(vec!["php".into()], Arc::new(Box::new(Php)));
         langs.insert(vec!["lua".into()], Arc::new(Box::new(Lua)));
-        langs.insert(vec!["sh".into(),
+        langs.insert(vec!["asm".into()], Arc::new(Box::new(Asm)));
+        langs.insert(vec![
+            "sh".into(),
             "shell".into()
             ], Arc::new(Box::new(Shell)));
         langs.insert(vec![

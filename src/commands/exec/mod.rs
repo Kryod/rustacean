@@ -42,6 +42,9 @@ pub use self::lua::Lua;
 mod shell;
 pub use self::shell::Shell;
 
+mod asm;
+pub use self::asm::Asm;
+
 #[derive(Debug, Default)]
 pub struct CommandResult {
     pub exit_code: Option<i32>,
