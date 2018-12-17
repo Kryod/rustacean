@@ -4,8 +4,8 @@ RUN apt-get update -y && apt-get install -y libssl-dev \
     pkg-config \
     g++ \
     nodejs \
-    php \
-    default-jdk \
+    php-cli \
+    openjdk-8-jdk \
     apt-transport-https \
     dirmngr
 

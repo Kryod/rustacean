@@ -36,6 +36,12 @@ pub use self::csharp::Csharp;
 mod java;
 pub use self::java::Java;
 
+mod lua;
+pub use self::lua::Lua;
+
+mod shell;
+pub use self::shell::Shell;
+
 #[derive(Debug, Default)]
 pub struct CommandResult {
     pub exit_code: Option<i32>,

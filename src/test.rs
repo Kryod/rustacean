@@ -136,3 +136,13 @@ fn test_csharp() {
 fn test_java() {
     test_lang(String::from("System.out.print(\"test\");"), String::from("java"), 0, String::from("test"));
 }
+
+#[test]
+fn test_lua() {
+    test_lang(String::from("io.write(\"test\")"), String::from("lua"), 0, String::from("test"));
+}
+
+#[test]
+fn test_shell() {
+    test_lang(String::from("echo \"test\""), String::from("shell"), 0, String::from("test\n"));
+}
