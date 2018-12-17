@@ -13,6 +13,5 @@ addons:
       - mono-devel
 
 before_install:
-  - echo "deb http://deb.debian.org/debian jessie-backports main" > /etc/apt/sources.list
-  - sudo apt-get update -y
-  - sudo apt-get install -y lua5.3 lua-socket lua-sec
+  - pip install hererocks
+  - hererocks lua53 -l5.3 -rlatest
