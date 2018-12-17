@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/Kryod/rustacean.svg?branch=master)](https://travis-ci.org/Kryod/rustacean)
+
 # Rustacean
 
 Rustacean is a Discord bot that allows users to execute code snippets.
