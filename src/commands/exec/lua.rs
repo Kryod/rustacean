@@ -16,6 +16,6 @@ impl Language for Lua {
     }
 
     fn get_execution_command(&self, path: &PathBuf) -> Expression {
-        cmd!("lua", path)    
+        cmd!("lua5.3", path)    
     }
 }
