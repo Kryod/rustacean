@@ -126,3 +126,15 @@ Open a new `cmd` window and check if the compiler is working properly:
 C:\Users\Rustacean>javac -version
 javac 11.0.1
 ```
+
+#### Lua
+
+Go to https://sourceforge.net/projects/luabinaries/, click on the green "Download" button.
+
+Extract the contents of the archive and add the resulting directory to your `Path` environment variable.
+
+Open a new `cmd` window and check if the interpreter is working properly:
+```cmd
+C:\Users\Rustacean>lua53 -v
+Lua 5.3.4  Copyright (C) 1994-2017 Lua.org, PUC-Rio
+```

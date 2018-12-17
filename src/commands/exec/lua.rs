@@ -16,6 +16,10 @@ impl Language for Lua {
     }
 
     fn get_execution_command(&self, path: &PathBuf) -> Expression {
-        cmd!("lua5.3", path)    
+        if cfg!(windows) {
+            cmd!("lua53", path)
+        } else {
+            cmd!("lua5.3", path)
+        }
     }
 }

@@ -3,6 +3,16 @@ use std::fs;
 
 use ::commands;
 
+fn get_test_user() -> serenity::model::user::User {
+    serenity::model::user::User {
+        avatar: None,
+        bot: false,
+        discriminator: 0,
+        id: serenity::model::id::UserId::from(123456u64),
+        name: String::from("test")
+    }
+}
+
 #[allow(dead_code)]
 fn test_lang(code: String, lang: String, ret_code: i32, ret_str: String) {
     let lang_manager = LangManager::default();
@@ -15,13 +25,7 @@ fn test_lang(code: String, lang: String, ret_code: i32, ret_str: String) {
         }
     };
 
-    let user = serenity::model::user::User{
-        avatar: None,
-        bot: false,
-        discriminator: 0,
-        id: serenity::model::id::UserId::from(123456u64),
-        name: String::from("test")
-    };
+    let user = get_test_user();
     let src_path = commands::exec::save_code(&code, &user, &lang.get_source_file_ext()).unwrap();
 
     if let Some(modified) = lang.pre_process_code(&code, &src_path) {
@@ -143,6 +147,7 @@ fn test_lua() {
 }
 
 #[test]
+#[cfg_attr(not(unix), ignore)]
 fn test_shell() {
     test_lang(String::from("echo \"test\""), String::from("shell"), 0, String::from("test\n"));
 }
