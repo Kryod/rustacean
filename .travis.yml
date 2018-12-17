@@ -1,3 +1,8 @@
 language: rust
 rust:
   - 1.30.0
+
+before_install:
+  - sudo apt-get install -y openjdk-8-jdk
+  - sudo apt-get install -y mono-devel
+  - sudo apt-get install -y lua5.3 lua-socket lua-sec
