@@ -5,8 +5,14 @@ rust:
 jdk:
   - openjdk8
 
+addons:
+  apt:
+    sources:
+      - mono-nightly
+    packages:
+      - mono-devel
+
 before_install:
   - echo "deb http://deb.debian.org/debian jessie-backports main" > /etc/apt/sources.list
   - sudo apt-get update -y
-  - sudo apt-get install -y mono-devel
   - sudo apt-get install -y lua5.3 lua-socket lua-sec
