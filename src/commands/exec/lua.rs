@@ -6,6 +6,16 @@ use duct::{ cmd, Expression };
 #[derive(Debug)]
 pub struct Lua;
 
+impl Lua {
+    fn get_interpreter(&self) -> String {
+        if cfg!(windows) {
+            "lua53".into()
+        } else {
+            "lua5.3".into()
+        }
+    }
+}
+
 impl Language for Lua {
     fn get_lang_name(&self) -> String {
         "Lua".into()
@@ -16,10 +26,10 @@ impl Language for Lua {
     }
 
     fn get_execution_command(&self, path: &PathBuf) -> Expression {
-        if cfg!(windows) {
-            cmd!("lua53", path)
-        } else {
-            cmd!("lua5.3", path)
-        }
+        cmd!(self.get_interpreter(), path)
+    }
+
+    fn check_compiler_or_interpreter(&self) -> Expression {
+        cmd!(self.get_interpreter(), "-v")
     }
 }

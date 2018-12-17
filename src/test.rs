@@ -15,13 +15,13 @@ fn get_test_user() -> serenity::model::user::User {
 
 #[allow(dead_code)]
 fn test_lang(code: String, lang: String, ret_code: i32, ret_str: String) {
-    let lang_manager = LangManager::default();
+    let lang_manager = LangManager::new();
     let code = code;
-    let lang = match LangManager::get(&lang_manager, &lang){
+    let lang = match LangManager::get(&lang_manager, &lang) {
         Some(lang) => lang,
         None => {
-            let langs = LangManager::get_langs(&lang_manager);
-            panic!(":x: Unknown programming language\nHere are the languages available: {}", langs);
+            let langs = lang_manager.get_languages_list();
+            panic!("Unknown programming language\nHere are the languages available: {}", langs);
         }
     };
 
@@ -65,16 +65,16 @@ fn test_lang(code: String, lang: String, ret_code: i32, ret_str: String) {
 
     if compilation.timed_out {
         // Compilation timed out
-        panic!(":x: Compilation timed out");
+        panic!("Compilation timed out");
     } else if execution.timed_out {
         // Execution timed out
-        panic!(":x: Execution timed out");
+        panic!("Execution timed out");
     } else {
         // Didn't time out
         match compilation.exit_code {
             Some(code) if code != 0 => {
                 // Compilation failed
-                panic!(":x: Compilation failed: ```\r\n{}```",compilation.stderr);
+                panic!("Compilation failed: ```\r\n{}```",compilation.stderr);
             },
             _ => {
                 // Compilation succeeded

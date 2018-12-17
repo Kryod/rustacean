@@ -129,7 +129,7 @@ javac 11.0.1
 
 #### Lua
 
-Go to https://sourceforge.net/projects/luabinaries/, click on the green "Download" button.
+Go to https://sourceforge.net/projects/luabinaries/files/5.3, click on the green "Download Latest Version" button.
 
 Extract the contents of the archive and add the resulting directory to your `Path` environment variable.
 

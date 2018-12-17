@@ -18,4 +18,8 @@ impl Language for Shell {
     fn get_execution_command(&self, path: &PathBuf) -> Expression {
         cmd!("sh", path)    
     }
+
+    fn check_compiler_or_interpreter(&self) -> Expression {
+        cmd!("sh", "-c", "echo \"ok\"")
+    }
 }

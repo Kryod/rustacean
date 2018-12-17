@@ -30,4 +30,8 @@ impl Language for Rust {
     fn get_compiler_command(&self, src_path: &PathBuf, exe_path: &PathBuf) -> Option<Expression> {
         Some(cmd!("rustc", src_path, "-o", exe_path))
     }
+
+    fn check_compiler_or_interpreter(&self) -> Expression {
+        cmd!("rustc", "--version")
+    }
 }

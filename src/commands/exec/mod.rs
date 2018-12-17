@@ -8,8 +8,6 @@ use std::time::{ Instant, Duration };
 use rand::distributions::Alphanumeric;
 use duct::Expression;
 
-use lang_manager::LangManager;
-
 pub mod language;
 
 mod rust;
@@ -53,11 +51,12 @@ pub struct CommandResult {
 command!(exec(ctx, msg, _args) {
     let arg = msg.content.clone();
     let split = arg.split("```");
+    let data = ctx.data.lock();
+    let settings = data.get::<::Settings>().unwrap().clone();
+    let langs = data.get::<::LangManager>().unwrap().lock().unwrap().get_languages_list();
+    drop(data);
+
     if split.clone().nth(1).is_none() {
-        let mut data = ctx.data.lock();
-        let lang_manager = data.get::<::LangManager>().unwrap();
-        let langs = LangManager::get_langs(&lang_manager);
-        let settings = data.get::<::Settings>().unwrap();
         let _ = msg.reply(&format!("Please add a code section to your message\r\nExample:\r\n{}exec\r\n\\`\\`\\`language\r\n**code**\r\n\\`\\`\\`\nHere are the languages available: {}", settings["command_prefix"], langs));
         return Ok(());
     }
@@ -73,24 +72,30 @@ command!(exec(ctx, msg, _args) {
             (lang, code)
         },
         None => {
-            let mut data = ctx.data.lock();
-            let lang_manager = data.get::<::LangManager>().unwrap();
-            let langs = LangManager::get_langs(&lang_manager);
             let _ = msg.reply(&format!(":x: Please specify a language\nHere are the languages available: {}", langs));
             return Ok(());
         },
     };
 
-    let mut data = ctx.data.lock();
-    let lang_manager = data.get_mut::<::LangManager>().unwrap();
-    let lang = match LangManager::get(&lang_manager, &lang_code) {
-        Some(lang) => lang,
-        None => {
-            let langs = LangManager::get_langs(&lang_manager);
-            let _ = msg.reply(&format!(":x: Unknown programming language\nHere are the languages available: {}", langs));
-            return Ok(());
+    let data = ctx.data.lock();
+    let lang = {
+        let lang_manager = data.get::<::LangManager>().unwrap().lock().unwrap();
+        match lang_manager.get(&lang_code) {
+            Some(lang) => {
+                if lang_manager.is_language_available(&(*lang)) {
+                    lang
+                } else {
+                    let _ = msg.reply(&format!(":x: This programming language is currently unavailable."));
+                    return Ok(());
+                }
+            },
+            None => {
+                let _ = msg.reply(&format!(":x: Unknown programming language\nHere are the languages available: {}", langs));
+                return Ok(());
+            }
         }
     };
+    drop(data);
 
     let src_path = match save_code(&code, &msg.author, &lang.get_source_file_ext()) {
         Ok(path) => path,
