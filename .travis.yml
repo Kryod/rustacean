@@ -12,6 +12,7 @@ addons:
     packages:
       - mono-devel
       - nodejs
+      - nasm
 
 before_install:
   - echo "deb http://deb.debian.org/debian jessie-backports main" > /etc/apt/sources.list
