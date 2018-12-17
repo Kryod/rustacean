@@ -11,5 +11,8 @@ addons:
       - mono-nightly
     packages:
       - mono-devel
-      - lua5.3
 
+before_install:
+  - echo "deb http://deb.debian.org/debian jessie-backports main" > /etc/apt/sources.list
+  - sudo apt-get update -y
+  - sudo apt-get install -y lua5.3
