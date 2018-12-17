@@ -19,7 +19,8 @@ extern crate duct;
 extern crate regex;
 extern crate typemap;
 
-mod commands;
+pub mod commands;
+mod test;
 
 use ::commands::exec::*;
 
