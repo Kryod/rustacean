@@ -11,6 +11,7 @@ addons:
       - mono-nightly
     packages:
       - mono-devel
+      - libmono-winforms2.0-cil
       - libmono-microsoft-visualbasic8.0-cil
       - mono-vbnc
       - nodejs
