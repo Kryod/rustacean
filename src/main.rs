@@ -103,33 +103,8 @@ impl EventHandler for Handler {
         info!("Resumed");
     }
 
-    fn message(&self, _: Context, msg: Message) {
-        if msg.content.contains("rust") {
-            /*let mut emote : Emoji = Emoji::new();
-            emote.id = "509392478491639828";
-            msg.react(emote);*/
-        }
+    fn message(&self, _: Context, _msg: Message) {
 
-        if msg.content == "!hello" {
-            // The create message builder allows you to easily create embeds and messages
-            // using a builder syntax.
-            // This example will create a message that says "Hello, World!", with an embed that has
-            // a title, description, three fields, and footer.
-            if let Err(why) = msg.channel_id.send_message(|m| m
-                .content("Hello, World!")
-                .embed(|e| e
-                    .title("This is a title")
-                    .description("This is a description")
-                    .fields(vec![
-                        ("This is the first field", "This is a field body", true),
-                        ("This is the second field", "Both of these fields are inline", true),
-                    ])
-                    .field("This is the third field", "This is not an inline field", false)
-                    .footer(|f| f
-                        .text("This is a footer")))) {
-                println!("Error sending message: {:?}", why);
-            }
-        }
     }
 }
 
@@ -236,8 +211,6 @@ fn main() {
         //.bucket("exec_bucket", 5, 30, 2)
         // Can't be used more than once per 5 seconds:
         .simple_bucket("exec_bucket", 5)
-        .command("ping", |c| c.cmd(commands::meta::ping))
-        .command("multiply", |c| c.cmd(commands::math::multiply))
         .command("git", |c| c.cmd(commands::git::git))
         .command("exec", |c| c
             .bucket("exec_bucket")

@@ -210,8 +210,12 @@ command!(exec(ctx, msg, _args) {
 
     if !reply.is_empty() {
         let header = format!("<@{}>,", msg.author.id);
+        let max_msg_len = 2000;
         reply = format!("{}{}", header, reply);
-        reply.truncate(2000);
+        reply.truncate(max_msg_len - 3);
+        if reply.len() == max_msg_len - 3 {
+            reply.push_str("```");
+        }
         if let Err(e) = msg.channel_id.say(&reply) {
             error!("An error occured while replying to an exec query: {}", e);
             return Ok(());
