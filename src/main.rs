@@ -1,14 +1,3 @@
-//! Requires the 'framework' feature flag be enabled in your project's
-//! `Cargo.toml`.
-//!
-//! This can be enabled by specifying the feature in the dependency section:
-//!
-//! ```toml
-//! [dependencies.serenity]
-//! git = "https://github.com/serenity-rs/serenity.git"
-//! features = ["framework", "standard_framework"]
-//! ```
-
 #[macro_use] extern crate log;
 #[macro_use] extern crate serenity;
 
@@ -65,8 +54,11 @@ impl EventHandler for Handler {
         info!("Connected as {}", ready.user.name);
         info!("Open this link in a web browser to invite {} to a Discord server:\r\nhttps://discordapp.com/oauth2/authorize?client_id={}&scope=bot&permissions=378944", ready.user.name, ready.user.id);
 
+        let guilds = ready.guilds.len();
+
         let ctx = Arc::new(Mutex::new(ctx));
         std::thread::spawn(move || {
+            // Game presence status rotation
             loop {
                 set_game_presence_help(&ctx.lock().unwrap());
                 std::thread::sleep(std::time::Duration::from_secs(30));
@@ -76,10 +68,14 @@ impl EventHandler for Handler {
 
                 set_game_presence_exec(&ctx.lock().unwrap());
                 std::thread::sleep(std::time::Duration::from_secs(30));
+
+                set_game_presence(&ctx.lock().unwrap(), &format!("On {} servers", guilds));
+                std::thread::sleep(std::time::Duration::from_secs(15));
             }
         });
 
         std::thread::spawn(move || {
+            // Periodic snippets directory cleanup
             let cleanup_min_age = std::time::Duration::from_secs(60 * 60);
             loop {
                 let user_dirs = std::fs::read_dir(commands::exec::get_snippets_directory()).unwrap();

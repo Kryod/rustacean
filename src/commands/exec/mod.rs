@@ -64,6 +64,15 @@ fn cleanup(src_path: &PathBuf, exe_path: Option<&PathBuf>) {
     };
 }
 
+fn pre_process_output(code: &str) -> String {
+    let mut res: String = code.into();
+    res = res.replace("```", "");
+    res = res.replace("@everyone", "@ everyone");
+    res = res.replace("@here", "@ here");
+
+    res
+}
+
 command!(exec(ctx, msg, _args) {
     let arg = msg.content.clone();
     let split = arg.split("```");
@@ -141,7 +150,7 @@ command!(exec(ctx, msg, _args) {
         },
         None => Ok(CommandResult::default())
     };
-    let compilation = match compilation {
+    let mut compilation = match compilation {
         Ok(res) => res,
         Err(e) => {
             let err = format!("An error occurred while compiling code snippet: {}", e);
@@ -151,7 +160,7 @@ command!(exec(ctx, msg, _args) {
         },
     };
 
-    let execution = match compilation.exit_code {
+    let mut execution = match compilation.exit_code {
         Some(code) if code != 0 => {
             // Return a default value if compilation failed
             CommandResult::default()
@@ -172,6 +181,10 @@ command!(exec(ctx, msg, _args) {
     };
 
     let mut reply = String::new();
+    compilation.stderr = pre_process_output(&compilation.stderr);
+    compilation.stdout = pre_process_output(&compilation.stdout);
+    execution.stderr = pre_process_output(&execution.stderr);
+    execution.stdout = pre_process_output(&execution.stdout);
     if compilation.timed_out {
         // Compilation timed out
         reply = format!("{}\r\n:x: Compilation timed out", reply);
