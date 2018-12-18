@@ -3,7 +3,7 @@
 
 ## Contribute
 
-To work on the bot with docker you must build the Dockerfile.test image. Don't forget to set your config.toml
+To work on the bot with docker you must build the `Dockerfile.test` image. Don't forget to fill in your `config.toml` file.
 
 ```sh
 user@machine:~$ sudo docker build -t rusttest -f Dockerfile.test .

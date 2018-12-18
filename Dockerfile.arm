@@ -13,7 +13,7 @@ RUN apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 3FA7E03280
 
 RUN echo "deb https://download.mono-project.com/repo/debian stable-raspbianstretch main" | tee /etc/apt/sources.list.d/mono-official-stable.list
 
-RUN apt-get update -y && apt-get install -y mono-devel --allow-unauthenticated
+RUN apt-get update -y && apt-get install -y mono-devel mono-vbnc --allow-unauthenticated
 
 COPY ./ /home
 

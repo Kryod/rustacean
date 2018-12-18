@@ -43,6 +43,9 @@ pub use self::shell::Shell;
 mod asm;
 pub use self::asm::Asm;
 
+mod vb;
+pub use self::vb::Vb;
+
 #[derive(Debug, Default)]
 pub struct CommandResult {
     pub exit_code: Option<i32>,

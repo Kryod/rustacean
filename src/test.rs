@@ -149,7 +149,7 @@ fn test_lua() {
 #[test]
 #[cfg_attr(not(unix), ignore)]
 fn test_shell() {
-    test_lang(String::from("echo \"test\""), String::from("shell"), 0, String::from("test\n"));
+    test_lang(String::from("echo -ne \"test\""), String::from("shell"), 0, String::from("test"));
 }
 
 #[test]
@@ -176,4 +176,9 @@ mov rax, 60
 xor rdi, rdi
 syscall"#);
     test_lang(code, String::from("asm"), 0, String::from("8"));
+}
+
+#[test]
+fn test_vb() {
+    test_lang(String::from("Console.Write(\"test\")"), String::from("vb"), 0, String::from("test"));
 }

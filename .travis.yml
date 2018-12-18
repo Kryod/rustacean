@@ -11,6 +11,7 @@ addons:
       - mono-nightly
     packages:
       - mono-devel
+      - mono-vbnc
       - nodejs
       - nasm
 
