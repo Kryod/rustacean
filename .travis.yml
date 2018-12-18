@@ -13,10 +13,10 @@ addons:
       - mono-devel
       - nodejs
       - nasm
-      - kotlin
 
 before_install:
   - echo "deb http://deb.debian.org/debian jessie-backports main" > /etc/apt/sources.list
   - sudo apt-get update -y
   - sudo apt-get install -y --allow-unauthenticated lua5.3
   - sudo apt-get install -qq mono-vbnc
+  - wget https://github.com/JetBrains/kotlin/releases/download/v1.2.60/kotlin-compiler-1.2.60.zip; unzip kotlin-compiler-1.2.60.zip; export PATH=$PWD/kotlinc/bin:$PATH
