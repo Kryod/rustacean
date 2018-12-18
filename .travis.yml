@@ -11,14 +11,13 @@ addons:
       - mono-nightly
     packages:
       - mono-devel
-      - libmono-winforms2.0-cil
-      - libmono-microsoft-visualbasic8.0-cil
-      - mono-vbnc
       - nodejs
       - nasm
 
 before_install:
   - echo "deb http://deb.debian.org/debian jessie-backports main" > /etc/apt/sources.list
+  - echo "deb http://fr.archive.ubuntu.com/ubuntu/ trusty main restricted universe multiverse" > /etc/apt/sources.list
   - sudo apt-get update -y
   - sudo apt-get install -y --allow-unauthenticated lua5.3
+  - sudo apt-get install -y --allow-unauthenticated mono-vbnc
   - wget https://github.com/JetBrains/kotlin/releases/download/v1.3.11/kotlin-compiler-1.3.11.zip; unzip kotlin-compiler-1.3.11.zip; export PATH=$PWD/kotlinc/bin:$PATH
