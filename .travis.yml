@@ -7,5 +7,4 @@ services:
 
 before_install:
   - docker build -t rustacean -f Dockerfile.test .
-  - docker ps -a
-  - docker run rustacean /bin/sh -c "cargo test; bundle exec rake test"
+  - docker run rustacean /bin/sh -c "cargo test"
