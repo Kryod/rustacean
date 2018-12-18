@@ -122,7 +122,7 @@ command!(exec(ctx, msg, _args) {
     info!("Compiling/Executing {} code", lang.get_lang_name());
     let out_path = lang.get_out_path(&src_path);
     let compilation = match lang.get_compiler_command(&src_path, &out_path) {
-        Some(command) => run_command(&src_path, command),
+        Some(command) => run_command(&src_path, command, 30),
         None => Ok(CommandResult::default())
     };
     let compilation = match compilation {
@@ -142,7 +142,7 @@ command!(exec(ctx, msg, _args) {
         },
         _ => {
             // Compilation succeeded, run the snippet
-            match run_command(&src_path, lang.get_execution_command(&out_path)) {
+            match run_command(&src_path, lang.get_execution_command(&out_path), 10) {
                 Ok(res) => res,
                 Err(e) => {
                     let err = format!("An error occurred while running code snippet: {}", e);
@@ -244,10 +244,10 @@ pub fn save_code(code: &str, author: &serenity::model::user::User, ext: &str) ->
     Ok(path)
 }
 
-pub fn run_command(path: &PathBuf, cmd: Expression) -> Result<CommandResult, Error> {
+pub fn run_command(path: &PathBuf, cmd: Expression, timeout: u64) -> Result<CommandResult, Error> {
     let dir = path.parent().unwrap();
     let cmd = cmd.dir(dir).env_remove("RUST_LOG").unchecked();
-    let res = run_with_timeout(10, cmd)?;
+    let res = run_with_timeout(timeout, cmd)?;
 
     Ok(res)
 }
