@@ -47,7 +47,7 @@ End Module", code);
     fn get_compiler_command(&self, src_path: &PathBuf, exe_path: &PathBuf) -> Option<Expression> {
         let compiler = self.get_compiler();
         let out = format!("/out:{}", exe_path.to_str().unwrap());
-        Some(cmd!(compiler, out, "/target:winexe", "/nologo", src_path))
+        Some(cmd!(compiler, out, "/target:winexe", "/nologo", "/quiet", src_path))
     }
 
     fn get_execution_command(&self, path: &PathBuf) -> Expression {

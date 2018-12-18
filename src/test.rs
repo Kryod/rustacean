@@ -37,7 +37,7 @@ fn test_lang(code: String, lang: String, ret_code: i32, ret_str: String) {
 
     let out_path = lang.get_out_path(&src_path);
     let compilation = match lang.get_compiler_command(&src_path, &out_path) {
-        Some(command) => commands::exec::run_command(&src_path, command),
+        Some(command) => commands::exec::run_command(&src_path, command, 20),
         None => Ok(commands::exec::CommandResult::default())
     };
     let compilation = match compilation {
@@ -54,7 +54,7 @@ fn test_lang(code: String, lang: String, ret_code: i32, ret_str: String) {
         },
         _ => {
             // Compilation succeeded, run the snippet
-            match commands::exec::run_command(&src_path, lang.get_execution_command(&out_path)) {
+            match commands::exec::run_command(&src_path, lang.get_execution_command(&out_path), 20) {
                 Ok(res) => res,
                 Err(e) => {
                     panic!("An error occurred while running code snippet: {}", e);
