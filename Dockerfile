@@ -30,6 +30,4 @@ COPY ./ /home
 
 WORKDIR /home
 
-RUN cargo build
-
-CMD ["cargo", "run"]
+CMD ["cargo", "run", "--release"]
