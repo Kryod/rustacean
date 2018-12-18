@@ -11,6 +11,7 @@ command!(languages(ctx, msg, _args) {
             ));
         }
     }
+    fields.sort();
 
     let _ = msg.channel_id.send_message(|m| m
         .embed(|e| e

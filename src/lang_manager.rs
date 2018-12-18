@@ -22,18 +22,17 @@ impl LangManager {
         };
 
         mngr.languages.insert(vec![
-            "rust".into(),
-            "rs".into()
+            "rs".into(),
+            "rust".into()
         ], Arc::new(Box::new(Rust)));
-
         mngr.languages.insert(vec!["c".into()], Arc::new(Box::new(C)));
         mngr.languages.insert(vec!["cpp".into()], Arc::new(Box::new(Cpp)));
         mngr.languages.insert(vec!["php".into()], Arc::new(Box::new(Php)));
         mngr.languages.insert(vec!["lua".into()], Arc::new(Box::new(Lua)));
         mngr.languages.insert(vec!["asm".into()], Arc::new(Box::new(Asm)));
         mngr.languages.insert(vec![
-            "kotlin".into(),
-            "kt".into()
+            "kt".into(),
+            "kotlin".into()
             ], Arc::new(Box::new(Kotlin)));
         mngr.languages.insert(vec![
             "sh".into(),
