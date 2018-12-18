@@ -3,4 +3,7 @@ services:
 
 before_install:
   - docker build -t rustacean -f Dockerfile.test .
+
+script:
   - docker run rustacean /bin/sh -c "cargo test"
+
