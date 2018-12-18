@@ -10,7 +10,8 @@ addons:
     sources:
       - mono-nightly
     packages:
-      - mono-complete
+      - mono-devel
+      - libmono-microsoft-visualbasic8.0-cil
       - mono-vbnc
       - nodejs
       - nasm
