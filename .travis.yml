@@ -11,11 +11,12 @@ addons:
       - mono-nightly
     packages:
       - mono-devel
-      - mono-vbnc
       - nodejs
       - nasm
+      - kotlin
 
 before_install:
   - echo "deb http://deb.debian.org/debian jessie-backports main" > /etc/apt/sources.list
   - sudo apt-get update -y
   - sudo apt-get install -y --allow-unauthenticated lua5.3
+  - sudo apt-get install -qq mono-vbnc

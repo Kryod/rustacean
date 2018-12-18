@@ -182,3 +182,8 @@ syscall"#);
 fn test_vb() {
     test_lang(String::from("Console.Write(\"test\")"), String::from("vb"), 0, String::from("test"));
 }
+
+#[test]
+fn test_kotlin() {
+    test_lang(String::from("fun main(args: Array<String>) {\nprint(\"test\")\n}"), String::from("kt"), 0, String::from("test"));
+}
