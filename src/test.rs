@@ -186,4 +186,5 @@ fn test_vb() {
 #[test]
 fn test_kotlin() {
     test_lang(String::from("fun main(args: Array<String>) {\nprint(\"test\")\n}"), String::from("kt"), 0, false, String::from("test"));
+    test_lang(String::from("print(\"test\")"), String::from("kt"), 0, false, String::from("test"));
 }

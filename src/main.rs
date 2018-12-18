@@ -67,13 +67,6 @@ impl EventHandler for Handler {
 
         let ctx = Arc::new(Mutex::new(ctx));
         std::thread::spawn(move || {
-            let langs = {
-                let ctx = ctx.lock().unwrap();
-                let data = ctx.data.lock();
-                let lang_mgr = data.get::<LangManager>().unwrap().lock().unwrap();
-                lang_mgr.get_languages_list()
-            };
-
             loop {
                 set_game_presence_help(&ctx.lock().unwrap());
                 std::thread::sleep(std::time::Duration::from_secs(30));
@@ -82,9 +75,6 @@ impl EventHandler for Handler {
                 std::thread::sleep(std::time::Duration::from_secs(30));
 
                 set_game_presence_exec(&ctx.lock().unwrap());
-                std::thread::sleep(std::time::Duration::from_secs(30));
-
-                set_game_presence(&ctx.lock().unwrap(), &format!("Available languages: {}", langs));
                 std::thread::sleep(std::time::Duration::from_secs(30));
             }
         });
