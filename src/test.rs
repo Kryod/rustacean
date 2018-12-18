@@ -14,7 +14,7 @@ fn get_test_user() -> serenity::model::user::User {
 }
 
 #[allow(dead_code)]
-fn test_lang(code: String, lang: String, ret_code: i32, ret_str: String) {
+fn test_lang(code: String, lang: String, ret_code: i32, ignore_compil_stdout: bool, ret_str: String) {
     let lang_manager = LangManager::new();
     let code = code;
     let lang = match LangManager::get(&lang_manager, &lang) {
@@ -78,7 +78,7 @@ fn test_lang(code: String, lang: String, ret_code: i32, ret_str: String) {
             },
             _ => {
                 // Compilation succeeded
-                if !compilation.stdout.is_empty() {
+                if !ignore_compil_stdout && !compilation.stdout.is_empty() {
                     panic!("Compilation output: ```\r\n{}```", compilation.stdout);
                 }
                 if !compilation.stderr.is_empty() {
@@ -100,56 +100,56 @@ fn test_lang(code: String, lang: String, ret_code: i32, ret_str: String) {
 
 #[test]
 fn test_rust() {
-    test_lang(String::from("print!(\"test\");"), String::from("rust"), 0, String::from("test"));
-    test_lang(String::from("fn main() { print!(\"test\"); }"), String::from("rust"), 0, String::from("test"));
+    test_lang(String::from("print!(\"test\");"), String::from("rust"), 0, false, String::from("test"));
+    test_lang(String::from("fn main() { print!(\"test\"); }"), String::from("rust"), 0, false, String::from("test"));
 }
 
 #[test]
 fn test_c() {
-    test_lang(String::from("printf(\"test\");\nreturn 5;"), String::from("c"), 5, String::from("test"));
-    test_lang(String::from("#include <stdio.h>\n int main() { \nprintf(\"test\");\n return 0;\n }"), String::from("c"), 0, String::from("test"));
+    test_lang(String::from("printf(\"test\");\nreturn 5;"), String::from("c"), 5, false, String::from("test"));
+    test_lang(String::from("#include <stdio.h>\n int main() { \nprintf(\"test\");\n return 0;\n }"), String::from("c"), 0, false, String::from("test"));
 }
 
 #[test]
 fn test_cpp() {
-    test_lang(String::from("std::cout << \"test\";\nreturn 5;"), String::from("cpp"), 5, String::from("test"));
-    test_lang(String::from("#include <iostream>\n int main() { \nstd::cout << \"test\";\n return 0;\n }"), String::from("cpp"), 0, String::from("test"));
+    test_lang(String::from("std::cout << \"test\";\nreturn 5;"), String::from("cpp"), 5, false, String::from("test"));
+    test_lang(String::from("#include <iostream>\n int main() { \nstd::cout << \"test\";\n return 0;\n }"), String::from("cpp"), 0, false, String::from("test"));
 }
 
 #[test]
 fn test_python() {
-    test_lang(String::from("print(\"test\", end=\"\")"), String::from("python"), 0, String::from("test"));
+    test_lang(String::from("print(\"test\", end=\"\")"), String::from("python"), 0, false, String::from("test"));
 }
 
 #[test]
 fn test_php() {
-    test_lang(String::from("abc <?php echo \"test\";"), String::from("php"), 0, String::from("abc test"));
+    test_lang(String::from("abc <?php echo \"test\";"), String::from("php"), 0, false, String::from("abc test"));
 }
 
 #[test]
 fn test_javascript() {
-    test_lang(String::from("process.stdout.write(\"test\");"), String::from("javascript"), 0, String::from("test"));
+    test_lang(String::from("process.stdout.write(\"test\");"), String::from("javascript"), 0, false, String::from("test"));
 }
 
 #[test]
 fn test_csharp() {
-    test_lang(String::from("Console.Write(\"test\");"), String::from("cs"), 0, String::from("test"));
+    test_lang(String::from("Console.Write(\"test\");"), String::from("cs"), 0, false, String::from("test"));
 }
 
 #[test]
 fn test_java() {
-    test_lang(String::from("System.out.print(\"test\");"), String::from("java"), 0, String::from("test"));
+    test_lang(String::from("System.out.print(\"test\");"), String::from("java"), 0, false, String::from("test"));
 }
 
 #[test]
 fn test_lua() {
-    test_lang(String::from("io.write(\"test\")"), String::from("lua"), 0, String::from("test"));
+    test_lang(String::from("io.write(\"test\")"), String::from("lua"), 0, false, String::from("test"));
 }
 
 #[test]
 #[cfg_attr(not(unix), ignore)]
 fn test_shell() {
-    test_lang(String::from("echo -ne \"test\""), String::from("shell"), 0, String::from("test"));
+    test_lang(String::from("echo \"test\""), String::from("shell"), 0, false, String::from("test\n"));
 }
 
 #[test]
@@ -175,15 +175,15 @@ syscall
 mov rax, 60
 xor rdi, rdi
 syscall"#);
-    test_lang(code, String::from("asm"), 0, String::from("8"));
+    test_lang(code, String::from("asm"), 0, false, String::from("8"));
 }
 
 #[test]
 fn test_vb() {
-    test_lang(String::from("Console.Write(\"test\")"), String::from("vb"), 0, String::from("test"));
+    test_lang(String::from("Console.Write(\"test\")"), String::from("vb"), 0, true, String::from("test"));
 }
 
 #[test]
 fn test_kotlin() {
-    test_lang(String::from("fun main(args: Array<String>) {\nprint(\"test\")\n}"), String::from("kt"), 0, String::from("test"));
+    test_lang(String::from("fun main(args: Array<String>) {\nprint(\"test\")\n}"), String::from("kt"), 0, false, String::from("test"));
 }
