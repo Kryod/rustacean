@@ -1,5 +1,5 @@
 [package]
-name = "rustbot"
+name = "rustacean"
 version = "0.1.0"
 authors = ["Yohann Jerrain <y.jerrain@gmail.com>"]
 

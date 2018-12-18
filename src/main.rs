@@ -78,6 +78,25 @@ impl EventHandler for Handler {
                 std::thread::sleep(std::time::Duration::from_secs(30));
             }
         });
+
+        std::thread::spawn(move || {
+            let cleanup_min_age = std::time::Duration::from_secs(60 * 60);
+            loop {
+                let user_dirs = std::fs::read_dir(commands::exec::get_snippets_directory()).unwrap();
+                for user_dir in user_dirs {
+                    let snippet_files = std::fs::read_dir(user_dir.unwrap().path()).unwrap();
+                    for file in snippet_files {
+                        let file = file.unwrap().path();
+                        let metadata = std::fs::metadata(&file).unwrap();
+                        if metadata.is_file() && metadata.modified().unwrap().elapsed().unwrap() >= cleanup_min_age {
+                            let _ = std::fs::remove_file(file);
+                        }
+                    }
+                }
+
+                std::thread::sleep(cleanup_min_age);
+            }
+        });
     }
 
     fn resume(&self, _: Context, _: ResumedEvent) {

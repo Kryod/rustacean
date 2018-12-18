@@ -57,6 +57,13 @@ pub struct CommandResult {
     pub timed_out: bool,
 }
 
+fn cleanup(src_path: &PathBuf, exe_path: Option<&PathBuf>) {
+    let _ = std::fs::remove_file(src_path);
+    if let Some(exe_path) = exe_path {
+        let _ = std::fs::remove_file(exe_path);
+    };
+}
+
 command!(exec(ctx, msg, _args) {
     let arg = msg.content.clone();
     let split = arg.split("```");
@@ -117,7 +124,11 @@ command!(exec(ctx, msg, _args) {
     if let Some(modified) = lang.pre_process_code(&code, &src_path) {
         match fs::write(src_path.as_path(), modified) {
             Ok(_) => {},
-            Err(e) => error!("Could not save code snippet: {}", e),
+            Err(e) => {
+                error!("Could not save code snippet: {}", e);
+                cleanup(&src_path, None);
+                return Ok(());
+            },
         };
     }
     info!("Saved {} code in {}", lang.get_lang_name(), src_path.to_str().unwrap());
@@ -135,7 +146,7 @@ command!(exec(ctx, msg, _args) {
         Err(e) => {
             let err = format!("An error occurred while compiling code snippet: {}", e);
             let _ = msg.reply(&err);
-            error!("{}", err);
+            cleanup(&src_path, None);
             return Ok(());
         },
     };
@@ -153,7 +164,7 @@ command!(exec(ctx, msg, _args) {
                 Err(e) => {
                     let err = format!("An error occurred while running code snippet: {}", e);
                     let _ = msg.reply(&err);
-                    error!("{}", err);
+                    cleanup(&src_path, Some(&out_path));
                     return Ok(());
                 }
             }
@@ -195,12 +206,15 @@ command!(exec(ctx, msg, _args) {
         };
     }
 
+    cleanup(&src_path, Some(&out_path));
+
     if !reply.is_empty() {
         let header = format!("<@{}>,", msg.author.id);
         reply = format!("{}{}", header, reply);
         reply.truncate(2000);
         if let Err(e) = msg.channel_id.say(&reply) {
             error!("An error occured while replying to an exec query: {}", e);
+            return Ok(());
         }
     } else {
         debug!("Output is empty");

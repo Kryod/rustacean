@@ -1,7 +1,8 @@
 use LangManager;
-use std::fs;
-
 use ::commands;
+
+use std::path::PathBuf;
+use std::fs;
 
 fn get_test_user() -> serenity::model::user::User {
     serenity::model::user::User {
@@ -11,6 +12,13 @@ fn get_test_user() -> serenity::model::user::User {
         id: serenity::model::id::UserId::from(123456u64),
         name: String::from("test")
     }
+}
+
+fn cleanup(src_path: &PathBuf, exe_path: Option<&PathBuf>) {
+    let _ = std::fs::remove_file(src_path);
+    if let Some(exe_path) = exe_path {
+        let _ = std::fs::remove_file(exe_path);
+    };
 }
 
 #[allow(dead_code)]
@@ -31,7 +39,10 @@ fn test_lang(code: String, lang: String, ret_code: i32, ignore_compil_stdout: bo
     if let Some(modified) = lang.pre_process_code(&code, &src_path) {
         match fs::write(src_path.as_path(), modified) {
             Ok(_) => {},
-            Err(e) => panic!("Could not save code snippet: {}", e),
+            Err(e) => {
+                cleanup(&src_path, None);
+                panic!("Could not save code snippet: {}", e);
+            },
         };
     }
 
@@ -43,6 +54,7 @@ fn test_lang(code: String, lang: String, ret_code: i32, ignore_compil_stdout: bo
     let compilation = match compilation {
         Ok(res) => res,
         Err(e) => {
+            cleanup(&src_path, None);
             panic!("An error occurred while compiling code snippet: {}", e);
         },
     };
@@ -57,11 +69,14 @@ fn test_lang(code: String, lang: String, ret_code: i32, ignore_compil_stdout: bo
             match commands::exec::run_command(&src_path, lang.get_execution_command(&out_path), 20) {
                 Ok(res) => res,
                 Err(e) => {
+                    cleanup(&src_path, Some(&out_path));
                     panic!("An error occurred while running code snippet: {}", e);
                 }
             }
         }
     };
+
+    cleanup(&src_path, Some(&out_path));
 
     if compilation.timed_out {
         // Compilation timed out
