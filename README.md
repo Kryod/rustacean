@@ -20,23 +20,25 @@ Made with Rust 🦀❤
 
 Create a clone of this project on your development machine:
 ```sh
-user@machine:~$ git clone https://github.com/Kryod/rustbot.git
+user@machine:~$ git clone https://github.com/Kryod/rustacean.git
 ```
 
 Register a Discord bot here https://discordapp.com/developers/applications/me
 
 Set up your environment:
 ```sh
-user@machine:~$ cd rustbot/ # Go to your copy of this repository
-user@machine:~/rustbot$ cp config.toml.example config.toml
-user@machine:~/rustbot$ nano config.toml # Edit this file to set your Discord bot credentials
+user@machine:~$ cd rustacean/ # Go to your copy of this repository
+user@machine:~/rustacean$ cp config.toml.example config.toml
+user@machine:~/rustacean$ nano config.toml # Edit this file to set your Discord bot credentials
 ```
 
 Then, you can run the bot:
 ```sh
-user@machine:~/rustbot$ cargo run
+user@machine:~/rustacean$ cargo run
 ```
 When the program starts running, an invite link will be printed out to add the bot to your Discord server.
+
+⚠️ It is recommended to **[run Rustacean as a Docker container](readme/docker.md)** instead of directly on your machine, otherwise **users will be able to access your file system**.
 
 ### Docker
 

@@ -46,6 +46,9 @@ pub use self::asm::Asm;
 mod kotlin;
 pub use self::kotlin::Kotlin;
 
+mod vb;
+pub use self::vb::Vb;
+
 #[derive(Debug, Default)]
 pub struct CommandResult {
     pub exit_code: Option<i32>,

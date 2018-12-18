@@ -51,6 +51,10 @@ impl LangManager {
             "cs".into(),
             "csharp".into(),
         ], Arc::new(Box::new(Csharp)));
+        mngr.languages.insert(vec![
+            "vb".into(),
+            "vbnet".into(),
+        ], Arc::new(Box::new(Vb)));
         mngr.languages.insert(vec!["java".into()], Arc::new(Box::new(Java)));
 
         mngr.check_compilers_interpreters();
