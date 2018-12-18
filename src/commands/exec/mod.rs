@@ -43,6 +43,9 @@ pub use self::shell::Shell;
 mod asm;
 pub use self::asm::Asm;
 
+mod kotlin;
+pub use self::kotlin::Kotlin;
+
 #[derive(Debug, Default)]
 pub struct CommandResult {
     pub exit_code: Option<i32>,
@@ -116,10 +119,14 @@ command!(exec(ctx, msg, _args) {
     }
     info!("Saved {} code in {}", lang.get_lang_name(), src_path.to_str().unwrap());
 
-    info!("Compiling/Executing {} code", lang.get_lang_name());
+    //info!("Compiling/Executing {} code", lang.get_lang_name());
     let out_path = lang.get_out_path(&src_path);
     let compilation = match lang.get_compiler_command(&src_path, &out_path) {
-        Some(command) => run_command(&src_path, command),
+        Some(command) => {
+
+            info!("Compiling {} code", lang.get_lang_name());
+            run_command(&src_path, command)
+        },
         None => Ok(CommandResult::default())
     };
     let compilation = match compilation {
@@ -139,6 +146,8 @@ command!(exec(ctx, msg, _args) {
         },
         _ => {
             // Compilation succeeded, run the snippet
+
+            info!("Executing {} code", lang.get_lang_name());
             match run_command(&src_path, lang.get_execution_command(&out_path)) {
                 Ok(res) => res,
                 Err(e) => {

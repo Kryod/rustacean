@@ -32,6 +32,10 @@ impl LangManager {
         mngr.languages.insert(vec!["lua".into()], Arc::new(Box::new(Lua)));
         mngr.languages.insert(vec!["asm".into()], Arc::new(Box::new(Asm)));
         mngr.languages.insert(vec![
+            "kotlin".into(),
+            "kt".into()
+            ], Arc::new(Box::new(Kotlin)));
+        mngr.languages.insert(vec![
             "sh".into(),
             "shell".into()
             ], Arc::new(Box::new(Shell)));

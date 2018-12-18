@@ -229,6 +229,7 @@ fn main() {
         .simple_bucket("exec_bucket", 5)
         .command("ping", |c| c.cmd(commands::meta::ping))
         .command("multiply", |c| c.cmd(commands::math::multiply))
+        .command("git", |c| c.cmd(commands::git::git))
         .command("exec", |c| c
             .bucket("exec_bucket")
             .cmd(commands::exec::exec))
