@@ -6,6 +6,28 @@ Rustacean is a Discord bot that allows users to execute code snippets.
 
 Made with Rust 🦀❤
 
+## Commands
+
+**`~help`**: Get a list of commands. Use `~help <command>` to get details on a command.
+**`~languages`**: Get a list of available programming languages.
+**`~git`**: Get a link to the bot's GitHub repository.
+**`~exec`**: Executes a code snippet. Your message needs to look like this:
+````
+~exec
+​```language
+
+code...
+​```
+````
+where `language` is the language of your choice.
+For example:
+````
+~exec
+​```c
+printf("Oh hi Discord!");
+​```
+````
+
 ## Getting Started
 
 ### Prerequisites
@@ -17,6 +39,8 @@ Made with Rust 🦀❤
 [prerequisites on macOS](readme/macos.md)
 
 ### Installing
+
+⚠️ It is recommended to **[run Rustacean as a Docker container](readme/docker.md)** instead of directly on your machine, otherwise **users will be able to access your file system**.
 
 Create a clone of this project on your development machine:
 ```sh
@@ -37,8 +61,6 @@ Then, you can run the bot:
 user@machine:~/rustacean$ cargo run
 ```
 When the program starts running, an invite link will be printed out to add the bot to your Discord server.
-
-⚠️ It is recommended to **[run Rustacean as a Docker container](readme/docker.md)** instead of directly on your machine, otherwise **users will be able to access your file system**.
 
 ### Docker
 
