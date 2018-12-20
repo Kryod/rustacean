@@ -57,3 +57,8 @@ $ sudo apt-get install -y default-jdk
 ```bash
 $ sudo apt-get install -y lua5.3 lua-socket lua-sec
 ```
+
+#### Assembleur x86 && x64
+```bash
+$ sudo apt-get install -y nasm
+```

@@ -169,16 +169,13 @@ fn test_shell() {
 
 #[test]
 #[cfg_attr(not(unix), ignore)]
-fn test_asm() {
+fn test_asmx64() {
     let code = String::from(r#"section .text
 
     global _start
 
 _start:
-mov rax, 4
-mov rbx, 4
-add rax, rbx
-add rax, 0x30
+mov rax, 0x38
 push rax
 
 mov rax, 1
@@ -190,7 +187,30 @@ syscall
 mov rax, 60
 xor rdi, rdi
 syscall"#);
-    test_lang(code, String::from("asm"), 0, false, String::from("8"));
+    test_lang(code, String::from("asmx64"), 0, false, String::from("8"));
+}
+
+#[test]
+#[cfg_attr(not(unix), ignore)]
+fn test_asmx86() {
+    let code = String::from(r#"section .text
+
+    global _start
+
+_start:
+mov eax, 0x38
+push eax
+
+mov eax, 4
+mov ebx, 1
+mov ecx, esp
+mov edx, 1
+int 80h
+
+mov eax, 1
+xor ebx, ebx
+int 80h"#);
+    test_lang(code, String::from("asmx86"), 0, false, String::from("8"));
 }
 
 #[test]
