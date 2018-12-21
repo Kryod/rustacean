@@ -40,8 +40,11 @@ pub use self::lua::Lua;
 mod shell;
 pub use self::shell::Shell;
 
-mod asm;
-pub use self::asm::Asm;
+mod asmx86;
+pub use self::asmx86::Asmx86;
+
+mod asmx64;
+pub use self::asmx64::Asmx64;
 
 mod kotlin;
 pub use self::kotlin::Kotlin;

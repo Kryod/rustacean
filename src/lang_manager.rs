@@ -29,7 +29,16 @@ impl LangManager {
         mngr.languages.insert(vec!["cpp".into()], Arc::new(Box::new(Cpp)));
         mngr.languages.insert(vec!["php".into()], Arc::new(Box::new(Php)));
         mngr.languages.insert(vec!["lua".into()], Arc::new(Box::new(Lua)));
-        mngr.languages.insert(vec!["asm".into()], Arc::new(Box::new(Asm)));
+        mngr.languages.insert(vec![
+            "asmx86".into(),
+            "asm_x86".into()
+            ], Arc::new(Box::new(Asmx86)));
+        mngr.languages.insert(vec![
+            "asmx64".into(),
+            "asm_x64".into(),
+            "asm_x86_64".into(),
+            "asmx86_64".into()
+            ], Arc::new(Box::new(Asmx64)));
         mngr.languages.insert(vec![
             "kt".into(),
             "kotlin".into()
