@@ -1,6 +1,12 @@
 discord_token = "<YOUR_DISCORD_APP_TOKEN>"
 command_prefix = "~"
+bot_owners = [
+    123456, # Paste the Discord user IDs of your bot owners here
+    789123, # (bot owners have full permissions on all commands)
+]
 
 # Declares the level of logging to use. Read the documentation for the `log` crate for more information.
 log_level_term = "Info"
 log_level_file = "Debug"
+
+db_connection_pool_size = 8

@@ -1,30 +1,40 @@
 #[macro_use] extern crate log;
+#[macro_use] extern crate diesel;
 #[macro_use] extern crate serenity;
+#[macro_use] extern crate serde_derive;
 
 extern crate rand;
 extern crate simplelog;
-extern crate config;
+extern crate toml;
+extern crate serde;
 extern crate duct;
 extern crate regex;
 extern crate typemap;
+extern crate chrono;
 
 pub mod commands;
 pub mod lang_manager;
+pub mod tools;
+pub mod schema;
+pub mod models;
 mod test;
 
 use lang_manager::LangManager;
 
 use serenity::client::bridge::gateway::{ ShardManager };
 use serenity::framework::standard::{ DispatchError, StandardFramework, help_commands};
-use serenity::model::event::ResumedEvent;
-use serenity::model::channel::Message;
-use serenity::model::gateway::Ready;
+use serenity::model::prelude::{ Guild, Ready, Message, ResumedEvent };
 use serenity::prelude::{ Client, Context, EventHandler };
+use serenity::model::permissions::Permissions;
 use serenity::http;
+use diesel::SqliteConnection;
+use diesel::r2d2::{ ConnectionManager, Pool };
+use typemap::Key;
+
+use std::io::Read;
 use std::collections::{ HashSet, HashMap };
 use std::str::FromStr;
 use std::sync::{ Arc, Mutex };
-use typemap::Key;
 
 // A container type is created for inserting into the Client's `data`, which
 // allows for data to be accessible across all events and framework commands, or
@@ -35,16 +45,24 @@ impl Key for ShardManagerContainer {
     type Value = Arc<serenity::prelude::Mutex<ShardManager>>;
 }
 
-struct CommandCounter;
-
-impl Key for CommandCounter {
-    type Value = HashMap<String, u64>;
+#[derive(Deserialize, Clone)]
+struct Settings {
+    pub discord_token: String,
+    pub command_prefix: String,
+    pub log_level_term: String,
+    pub log_level_file: String,
+    pub db_connection_pool_size: u32,
+    pub bot_owners: Vec<serenity::model::prelude::UserId>,
 }
 
-struct Settings;
-
 impl Key for Settings {
-    type Value = HashMap<String, String>;
+    type Value = Arc<Mutex<Settings>>;
+}
+
+struct GuildCounter(usize);
+
+impl Key for GuildCounter {
+    type Value = Arc<Mutex<GuildCounter>>;
 }
 
 struct Handler;
@@ -54,7 +72,10 @@ impl EventHandler for Handler {
         info!("Connected as {}", ready.user.name);
         info!("Open this link in a web browser to invite {} to a Discord server:\r\nhttps://discordapp.com/oauth2/authorize?client_id={}&scope=bot&permissions=378944", ready.user.name, ready.user.id);
 
-        let guilds = ready.guilds.len();
+        {
+            let mut data = ctx.data.lock();
+            data.get_mut::<GuildCounter>().unwrap().lock().unwrap().0 += ready.guilds.len();
+        }
 
         let ctx = Arc::new(Mutex::new(ctx));
         std::thread::spawn(move || {
@@ -69,6 +90,7 @@ impl EventHandler for Handler {
                 set_game_presence_exec(&ctx.lock().unwrap());
                 std::thread::sleep(std::time::Duration::from_secs(30));
 
+                let guilds = get_connected_guilds(&ctx.lock().unwrap());
                 set_game_presence(&ctx.lock().unwrap(), &format!("On {} servers", guilds));
                 std::thread::sleep(std::time::Duration::from_secs(15));
             }
@@ -102,21 +124,46 @@ impl EventHandler for Handler {
     fn message(&self, _: Context, _msg: Message) {
 
     }
+
+    fn guild_create(&self, ctx: Context, _guild: Guild, is_new: bool) {
+        if is_new {
+            let mut data = ctx.data.lock();
+            data.get_mut::<GuildCounter>().unwrap().lock().unwrap().0 += 1;
+        }
+    }
 }
 
-fn init_settings() -> HashMap<String, String> {
-    let mut settings = config::Config::default();
-    settings
-        .merge(config::File::with_name("config")).expect("Could not read configuration file")
-        .merge(config::Environment::with_prefix("RUST")).unwrap();
-    settings.try_into().expect("Could not deserialize configuration")
+pub type DbPoolType = Arc<Pool<ConnectionManager<SqliteConnection>>>;
+pub struct DbPool(DbPoolType);
+
+impl Key for DbPool {
+    type Value = DbPoolType;
 }
 
-fn init_logging(settings: &HashMap<String, String>) {
+struct Bans;
+impl Key for Bans {
+    type Value = HashMap<serenity::model::prelude::UserId, Vec<models::Ban>>;
+}
+
+fn get_connected_guilds(ctx: &Context) -> usize {
+    let data = ctx.data.lock();
+    let n = data.get::<GuildCounter>().unwrap().lock().unwrap().0;
+    n.clone()
+}
+
+fn init_settings() -> Settings {
+    let mut f = std::fs::File::open("config.toml").expect("Could not find the config.toml file. Please copy config.toml.example to config.toml and edit the resulting file");
+    let mut contents = String::new();
+    f.read_to_string(&mut contents)
+        .expect("Could not read configuration file");
+    toml::from_str(&contents).expect("Could not deserialize configuration")
+}
+
+fn init_logging(settings: &Settings) {
     use simplelog::{ CombinedLogger, Config, LevelFilter, TermLogger, WriteLogger };
 
-    let log_level_term = LevelFilter::from_str(settings["log_level_term"].as_ref()).expect("Invalid log level filter");
-    let log_level_file = LevelFilter::from_str(settings["log_level_file"].as_ref()).expect("Invalid log level filter");
+    let log_level_term = LevelFilter::from_str(settings.log_level_term.as_ref()).expect("Invalid log level filter");
+    let log_level_file = LevelFilter::from_str(settings.log_level_file.as_ref()).expect("Invalid log level filter");
 
     let log_file = std::fs::File::create("rustacean.log").expect("Could not create log file");
 
@@ -129,11 +176,26 @@ fn init_logging(settings: &HashMap<String, String>) {
 }
 
 fn main() {
+    if tools::tools() {
+        return;
+    }
+
+    if !std::path::PathBuf::from("rustacean.sqlite3").exists() {
+        tools::update_db::update_db();
+    }
+
     let settings = init_settings();
-    let command_prefix = settings["command_prefix"].clone();
+    let command_prefix = settings.command_prefix.clone();
     init_logging(&settings);
 
-    let mut client = Client::new(&settings["discord_token"], Handler).expect("Err creating client");
+    let mut client = Client::new(&settings.discord_token, Handler).expect("Err creating client");
+
+    let manager: ConnectionManager<SqliteConnection> = ConnectionManager::new("rustacean.sqlite3");
+    let pool = Pool::builder()
+        .max_size(settings.db_connection_pool_size)
+        .build(manager)
+        .expect("Could not build database connection pool.");
+    let pool = Arc::new(pool);
 
     let owners = match http::get_current_application_info() {
         Ok(info) => {
@@ -145,47 +207,38 @@ fn main() {
         Err(why) => panic!("Couldn't get application info: {:?}", why),
     };
 
+    models::Ban::cleanup_outdated_bans(&pool);
+
     let lang_manager = LangManager::new();
 
     {
         let mut data = client.data.lock();
-        data.insert::<CommandCounter>(HashMap::default());
-        data.insert::<Settings>(settings);
+        data.insert::<Settings>(Arc::new(Mutex::new(settings)));
         data.insert::<ShardManagerContainer>(Arc::clone(&client.shard_manager));
         data.insert::<LangManager>(Arc::new(Mutex::new(lang_manager)));
+        data.insert::<DbPool>(pool.clone());
+        data.insert::<GuildCounter>(Arc::new(Mutex::new(GuildCounter(0))));
+        data.insert::<Bans>(models::Ban::get_bans(&pool));
     }
 
     client.with_framework(StandardFramework::new()
         .configure(|c| c
             .owners(owners)
             .prefix(&command_prefix))
-        // Set a function to be called prior to each command execution. This
-        // provides the context of the command, the message that was received,
-        // and the full name of the command that will be called.
-        //
-        // You can not use this to determine whether a command should be
-        // executed. Instead, `set_check` is provided to give you this
-        // functionality.
-        .before(|ctx, msg, command_name| {
-            debug!("Got command '{}' by user '{}'",
-                     command_name,
-                     msg.author.name);
-            // Increment the number of times this command has been run once. If
-            // the command's name does not exist in the counter, add a default
-            // value of 0.
-            let mut data = ctx.data.lock();
-            let counter = data.get_mut::<CommandCounter>().unwrap();
-            let entry = counter.entry(command_name.to_string()).or_insert(0);
-            *entry += 1;
-
-            true // if `before` returns false, command processing doesn't happen.
-        })
-        // Similar to `before`, except will be called directly _after_
-        // command execution.
-        .after(|_, _, command_name, error| {
-            match error {
-                Ok(()) => debug!("Processed command '{}'", command_name),
-                Err(why) => error!("Command '{}' returned error {:?}", command_name, why),
+        .before(| ctx, msg, _cmd_name | {
+            let data = ctx.data.lock();
+            let bans = data.get::<Bans>().unwrap();
+            match bans.get(&msg.author.id) {
+                Some(bans) => {
+                    let banned = bans.iter().any(| ban | {
+                        ban.is_banned_for_guild(msg.guild_id)
+                    });
+                    if banned {
+                        let _ = msg.reply("You cannot run commands while being banned.");
+                    }
+                    !banned
+                },
+                None => true,
             }
         })
         // Set a function that's called whenever an attempted command-call's
@@ -198,24 +251,50 @@ fn main() {
         // reason or another. For example, when a user has exceeded a rate-limit or a command
         // can only be performed by the bot owner.
         .on_dispatch_error(|_ctx, msg, error| {
-            if let DispatchError::RateLimited(seconds) = error {
-                let _ = msg.channel_id.say(&format!("Try this again in {} seconds.", seconds));
-            }
+            match error {
+                DispatchError::RateLimited(seconds) => {
+                    let _ = msg.reply(&format!("Try this again in {} seconds.", seconds));
+                },
+                DispatchError::OnlyForOwners | DispatchError::LackingRole | DispatchError::BlockedUser | DispatchError::LackOfPermissions(_) => {
+                    let _ = msg.reply("You are not allowed to do this.");
+                },
+                DispatchError::BlockedGuild => {
+                    let _ = msg.reply("Rustacean is not available on this server because its owner has been banned.");
+                },
+                _ => {},
+            };
         })
         .help(help_commands::with_embeds)
         // Time out for exec: Can't be used more than 2 times per 30 seconds, with a 5 second delay
         //.bucket("exec_bucket", 5, 30, 2)
         // Can't be used more than once per 5 seconds:
         .simple_bucket("exec_bucket", 5)
-        .command("git", |c| c.cmd(commands::git::git))
-        .command("exec", |c| c
-            .bucket("exec_bucket")
-            .cmd(commands::exec::exec))
-        .command("languages", |c| c.cmd(commands::languages::languages))
-        .command("quit", |c| c
-            .cmd(commands::owner::quit)
-            .owners_only(true))
-        );
+        .group(":desktop: Basic", |g| g
+            .command("git", |c| c.cmd(commands::git::git))
+            .command("exec", |c| c
+                .cmd(commands::exec::exec)
+                .batch_known_as(["execute", "run", "code"].iter())
+                .desc(&format!("Executes a code snippet. Your message needs to look like this:\r\n{}exec\r\n\\`\\`\\`language\r\n\r\ncode...\r\n\\`\\`\\`\r\nwhere `language` is the language of your choice.\r\nFor example:\r\n{}exec\r\n\\`\\`\\`javascript\r\nconsole.log(\"hi!\");\r\n\\`\\`\\`", command_prefix, command_prefix))
+                .bucket("exec_bucket"))
+            .command("languages", |c| c
+                .cmd(commands::languages::languages)
+                .desc(&format!("Get a list of available programming languages for the `{}exec` command.", command_prefix)))
+        )
+        .group(":star: Administrator", |g| g
+            .command("ban", |c| c
+                .cmd(commands::ban::ban)
+                .desc("Ban a user from using the bot. This command will not ban the target user from the Discord server, however.")
+                .example("@user 2019-11-24")
+                .guild_only(true)
+                .required_permissions(Permissions::ADMINISTRATOR)
+                .owner_privileges(true))
+        )
+        .group(":robot: Bot owner", |g| g
+            .command("quit", |c| c
+                .cmd(commands::owner::quit)
+                .owners_only(true))
+        )
+    );
 
     if let Err(why) = client.start() {
         error!("Client error: {:?}", why);
@@ -224,8 +303,8 @@ fn main() {
 
 fn get_command_prefix(ctx: &Context) -> String {
     let data = ctx.data.lock();
-    let settings = data.get::<Settings>().unwrap();
-    settings["command_prefix"].clone()
+    let settings = data.get::<Settings>().unwrap().lock().unwrap();
+    settings.command_prefix.clone()
 }
 
 fn set_game_presence_help(ctx: &Context) {

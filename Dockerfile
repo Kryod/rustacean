@@ -4,6 +4,7 @@ RUN mkdir -p /usr/share/man/man1
 
 RUN apt-get update -y && apt-get install -y libssl-dev \
     pkg-config \
+    libsqlite3-dev \
     python3 \
     g++ \
     nodejs \
@@ -15,6 +16,8 @@ RUN apt-get update -y && apt-get install -y libssl-dev \
     lua-sec \
     openjdk-8-jdk \
     nasm
+
+RUN cargo install diesel_cli --no-default-features --features "sqlite"
 
 RUN apt-get install -y wget unzip && \
     cd /usr/lib && \

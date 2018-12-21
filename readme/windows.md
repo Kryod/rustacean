@@ -20,6 +20,13 @@ Go to https://slproweb.com/products/Win32OpenSSL.html and download `Win64 OpenSS
 
 Run the installation and set the installation path that you chose as an `OPENSSL_DIR` environment variable.
 
+### Diesel
+
+Open a `cmd` window and run the following command:
+```cmd
+C:\Users\Rustacean>cargo install diesel_cli --no-default-features --features "sqlite"
+```
+
 ### Languages
 
 You can support different optional languages:

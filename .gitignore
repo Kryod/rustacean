@@ -11,5 +11,6 @@ Cargo.lock
 
 /.vscode
 /config.toml
+/rustacean.sqlite3
 /rustacean.log
 /snippets

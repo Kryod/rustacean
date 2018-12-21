@@ -9,8 +9,11 @@ Made with Rust 🦀❤
 ## Commands
 
 **`~help`**: Get a list of commands. Use `~help <command>` to get details on a command.
+
 **`~languages`**: Get a list of available programming languages.
+
 **`~git`**: Get a link to the bot's GitHub repository.
+
 **`~exec`**: Executes a code snippet. Your message needs to look like this:
 ````
 ~exec
@@ -52,6 +55,7 @@ Register a Discord bot here https://discordapp.com/developers/applications/me
 Set up your environment:
 ```sh
 user@machine:~$ cd rustacean/ # Go to your copy of this repository
+user@machine:~/rustacean$ cargo run update-db
 user@machine:~/rustacean$ cp config.toml.example config.toml
 user@machine:~/rustacean$ nano config.toml # Edit this file to set your Discord bot credentials
 ```

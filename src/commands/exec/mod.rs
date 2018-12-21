@@ -77,12 +77,14 @@ command!(exec(ctx, msg, _args) {
     let arg = msg.content.clone();
     let split = arg.split("```");
     let data = ctx.data.lock();
-    let settings = data.get::<::Settings>().unwrap().clone();
+    let command_prefix = {
+        data.get::<::Settings>().unwrap().lock().unwrap().command_prefix.clone()
+    };
     let langs = data.get::<::LangManager>().unwrap().lock().unwrap().get_languages_list();
     drop(data);
 
     if split.clone().nth(1).is_none() {
-        let _ = msg.reply(&format!("Please add a code section to your message\r\nExample:\r\n{}exec\r\n\\`\\`\\`language\r\n**code**\r\n\\`\\`\\`\nHere are the languages available: {}", settings["command_prefix"], langs));
+        let _ = msg.reply(&format!("Please add a code section to your message\r\nExample:\r\n{}exec\r\n\\`\\`\\`language\r\n**code**\r\n\\`\\`\\`\nHere are the languages available: {}", command_prefix, langs));
         return Ok(());
     }
     let code = split
@@ -220,6 +222,13 @@ command!(exec(ctx, msg, _args) {
     }
 
     cleanup(&src_path, Some(&out_path));
+
+    {
+        let data = ctx.data.lock();
+        let db = data.get::<::DbPool>().unwrap();
+        let mut stat = ::models::LangStat::get(&lang.get_lang_name(), db);
+        stat.increment_snippets_count(db);
+    }
 
     if !reply.is_empty() {
         let header = format!("<@{}>,", msg.author.id);
