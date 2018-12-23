@@ -35,6 +35,4 @@ WORKDIR /home
 
 RUN cargo build --release
 
-RUN cargo run update-db --release
-
 CMD ["cargo", "run", "--release"]

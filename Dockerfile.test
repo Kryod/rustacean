@@ -32,4 +32,3 @@ ENV PATH $PATH:/usr/lib/kotlinc/bin
 COPY ./ /home
 
 WORKDIR /home
-

@@ -21,12 +21,13 @@ Now your changes locally will affect files on the docker and vice-versa. You can
 
 To deploy the bot you need to make the image. Do not forget to set your config.toml.
 ```sh
-user@machine:~/rustacean$ sudo docker build -t rustacean .
+user@machine:~/rustacean$ sudo docker pull kryod/rustacean:latest
 ```
 
 Now you want this image to run on a server or something that will be on 24/7. You will probably want to have access to the logs of the bot if it crashes so you need to link the `rustacean.log` file in this directory to the `rustacean.log` file on the docker container.
 ```sh
-user@machine:~/rustacean$ touch rustacean.log
-user@machine:~/rustacean$ sudo docker run -t --restart="always" -d -v "$(pwd)/rustacean.log":/home/rustacean.log rustacean
+user@machine:~/rustacean$ touch rustacean.log rustacean.sqlite3
+user@machine:~/rustacean$ sudo docker run --name="rustacean" -t --restart="always" -d -v "$(pwd)/rustacean.log":/home/rustacean.log -v "$(pwd)/rustacean.sqlite3":/home/rustacean.sqlite3 -v "$(pwd)/config.toml":/home/config.toml kryod/rustacean:latest
+user@machine:~/rustacean$ sudo docker exec -it rustacean cargo run --release update-db
 user@machine:~/rustacean$ tail -f rustacean.log # you can now run this to monitor the bot
 ```
