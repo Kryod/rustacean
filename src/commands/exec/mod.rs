@@ -87,7 +87,7 @@ command!(exec(ctx, msg, _args) {
     drop(data);
 
     if split.clone().nth(1).is_none() {
-        let _ = msg.reply(&format!("Please add a code section to your message\r\nExample:\r\n{}exec\r\n\\`\\`\\`language\r\n**code**\r\n\\`\\`\\`\nHere are the languages available: {}", command_prefix, langs));
+        let _ = msg.reply(&format!("Please add a code section to your message\nExample:\n{}exec\n\\`\\`\\`language\n**code**\n\\`\\`\\`\nHere are the languages available: {}", command_prefix, langs));
         return Ok(());
     }
     let code = split
@@ -192,33 +192,33 @@ command!(exec(ctx, msg, _args) {
     execution.stdout = pre_process_output(&execution.stdout);
     if compilation.timed_out {
         // Compilation timed out
-        reply = format!("{}\r\n:x: Compilation timed out", reply);
+        reply = format!("{}\n:x: Compilation timed out", reply);
     } else if execution.timed_out {
         // Execution timed out
-        reply = format!("{}\r\n:x: Execution timed out", reply);
+        reply = format!("{}\n:x: Execution timed out", reply);
     } else {
         // Didn't time out
         match compilation.exit_code {
             Some(code) if code != 0 => {
                 // Compilation failed
-                reply = format!("{}\r\n:x: Compilation failed: ```\r\n{}```", reply, compilation.stderr);
+                reply = format!("{}\n:x: Compilation failed: ```\n{}```", reply, compilation.stderr);
             },
             _ => {
                 // Compilation succeeded
                 if !compilation.stdout.is_empty() {
-                    reply = format!("{}\r\nCompilation output: ```\r\n{}```", reply, compilation.stdout);
+                    reply = format!("{}\nCompilation output: ```\n{}```", reply, compilation.stdout);
                 }
                 if !compilation.stderr.is_empty() {
-                    reply = format!("{}\r\nCompilation error output: ```\r\n{}```", reply, compilation.stderr);
+                    reply = format!("{}\nCompilation error output: ```\n{}```", reply, compilation.stderr);
                 }
                 if let Some(code) = execution.exit_code {
-                    reply = format!("{}\r\nExit code: {}", reply, code);
+                    reply = format!("{}\nExit code: {}", reply, code);
                 }
                 if !execution.stdout.is_empty() {
-                    reply = format!("{}\r\nStandard output: ```\r\n{}```", reply, execution.stdout);
+                    reply = format!("{}\nStandard output: ```\n{}```", reply, execution.stdout);
                 }
                 if !execution.stderr.is_empty() {
-                    reply = format!("{}\r\nError output: ```\r\n{}```", reply, execution.stderr);
+                    reply = format!("{}\nError output: ```\n{}```", reply, execution.stderr);
                 }
             }
         };
