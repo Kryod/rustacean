@@ -6,7 +6,7 @@ use std::path::PathBuf;
 use std::io::{ Error, ErrorKind };
 use std::time::{ Instant, Duration };
 use rand::distributions::Alphanumeric;
-use duct::Expression;
+use duct::{ cmd, Expression };
 
 pub mod language;
 
@@ -302,10 +302,19 @@ pub fn run_command(path: &PathBuf, cmd: Expression, timeout: u64) -> Result<Comm
 }
 
 fn run_with_timeout(timeout: u64, cmd: ::duct::Expression) -> Result<CommandResult, Error> {
-    let child = cmd
-        .stdout_capture()
-        .stderr_capture()
-        .start()?;
+    let new_cmd;
+    #[cfg(unix)]
+    {
+        use std::os::unix::process::CommandExt;
+        new_cmd = cmd.before_spawn(|cmd| {
+                cmd.uid(1000);
+                Ok(())
+            });
+    }
+    let child = new_cmd
+            .stdout_capture()
+            .stderr_capture()
+            .start()?;
 
     let timeout = Duration::from_secs(timeout);
     let start = Instant::now();

@@ -100,7 +100,9 @@ impl EventHandler for Handler {
             // Periodic snippets directory cleanup
             let cleanup_min_age = std::time::Duration::from_secs(60 * 60);
             loop {
-                let user_dirs = std::fs::read_dir(commands::exec::get_snippets_directory()).unwrap();
+                let snippets_dir = commands::exec::get_snippets_directory();
+                std::fs::create_dir_all(&snippets_dir).unwrap();
+                let user_dirs = std::fs::read_dir(snippets_dir).unwrap();
                 for user_dir in user_dirs {
                     let snippet_files = std::fs::read_dir(user_dir.unwrap().path()).unwrap();
                     for file in snippet_files {
