@@ -304,19 +304,20 @@ pub fn run_command(path: &PathBuf, cmd: Expression, timeout: u64) -> Result<Comm
 }
 
 fn run_with_timeout(timeout: u64, cmd: ::duct::Expression) -> Result<CommandResult, Error> {
-    let new_cmd;
+    #[cfg_attr(not(unix), allow(unused_mut))]
+    let mut new_cmd = cmd;
     #[cfg(unix)]
     {
         use std::os::unix::process::CommandExt;
         new_cmd = cmd.before_spawn(|cmd| {
-                cmd.uid(1000);
-                Ok(())
-            });
+            cmd.uid(1000);
+            Ok(())
+        });
     }
     let child = new_cmd
-            .stdout_capture()
-            .stderr_capture()
-            .start()?;
+        .stdout_capture()
+        .stderr_capture()
+        .start()?;
 
     let timeout = Duration::from_secs(timeout);
     let start = Instant::now();

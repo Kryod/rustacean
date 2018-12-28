@@ -23,8 +23,8 @@ use lang_manager::LangManager;
 
 use serenity::client::bridge::gateway::{ ShardManager };
 use serenity::framework::standard::{ DispatchError, StandardFramework, help_commands};
-use serenity::model::prelude::{ Guild, Ready, Message, ResumedEvent };
-use serenity::prelude::{ Client, Context, EventHandler };
+use serenity::model::prelude::{ Guild, PartialGuild, Ready, Message, ResumedEvent };
+use serenity::prelude::{ Client, Context, EventHandler, RwLock };
 use serenity::model::permissions::Permissions;
 use serenity::http;
 use diesel::SqliteConnection;
@@ -132,6 +132,11 @@ impl EventHandler for Handler {
             let mut data = ctx.data.lock();
             data.get_mut::<GuildCounter>().unwrap().lock().unwrap().0 += 1;
         }
+    }
+
+    fn guild_delete(&self, ctx: Context, _incomplete: PartialGuild, _full: Option<Arc<RwLock<Guild>>>) {
+        let mut data = ctx.data.lock();
+        data.get_mut::<GuildCounter>().unwrap().lock().unwrap().0 -= 1;
     }
 }
 
