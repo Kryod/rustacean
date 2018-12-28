@@ -290,6 +290,8 @@ pub fn save_code(code: &str, author: &serenity::model::user::User, ext: &str) ->
     }
     fs::write(path.as_path(), code)?;
 
+    let _ = cmd!("chown", "dev", path.as_path()).run();
+
     Ok(path)
 }
 
