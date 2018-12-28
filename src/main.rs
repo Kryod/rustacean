@@ -30,6 +30,7 @@ use serenity::http;
 use diesel::SqliteConnection;
 use diesel::r2d2::{ ConnectionManager, Pool };
 use typemap::Key;
+use duct::cmd;
 
 use std::io::Read;
 use std::collections::{ HashSet, HashMap };
@@ -102,6 +103,7 @@ impl EventHandler for Handler {
             loop {
                 let snippets_dir = commands::exec::get_snippets_directory();
                 std::fs::create_dir_all(&snippets_dir).unwrap();
+                let _ = cmd!("chown", "-R", "dev", snippets_dir.to_str().unwrap()).run();
                 let user_dirs = std::fs::read_dir(snippets_dir).unwrap();
                 for user_dir in user_dirs {
                     let snippet_files = std::fs::read_dir(user_dir.unwrap().path()).unwrap();
