@@ -23,8 +23,8 @@ use lang_manager::LangManager;
 
 use serenity::client::bridge::gateway::{ ShardManager };
 use serenity::framework::standard::{ DispatchError, StandardFramework, help_commands};
-use serenity::model::prelude::{ Guild, Ready, Message, ResumedEvent };
-use serenity::prelude::{ Client, Context, EventHandler };
+use serenity::model::prelude::{ Guild, PartialGuild, Ready, Message, ResumedEvent };
+use serenity::prelude::{ Client, Context, EventHandler, RwLock };
 use serenity::model::permissions::Permissions;
 use serenity::http;
 use diesel::SqliteConnection;
@@ -100,7 +100,9 @@ impl EventHandler for Handler {
             // Periodic snippets directory cleanup
             let cleanup_min_age = std::time::Duration::from_secs(60 * 60);
             loop {
-                let user_dirs = std::fs::read_dir(commands::exec::get_snippets_directory()).unwrap();
+                let snippets_dir = commands::exec::get_snippets_directory();
+                std::fs::create_dir_all(&snippets_dir).unwrap();
+                let user_dirs = std::fs::read_dir(snippets_dir).unwrap();
                 for user_dir in user_dirs {
                     let snippet_files = std::fs::read_dir(user_dir.unwrap().path()).unwrap();
                     for file in snippet_files {
@@ -130,6 +132,11 @@ impl EventHandler for Handler {
             let mut data = ctx.data.lock();
             data.get_mut::<GuildCounter>().unwrap().lock().unwrap().0 += 1;
         }
+    }
+
+    fn guild_delete(&self, ctx: Context, _incomplete: PartialGuild, _full: Option<Arc<RwLock<Guild>>>) {
+        let mut data = ctx.data.lock();
+        data.get_mut::<GuildCounter>().unwrap().lock().unwrap().0 -= 1;
     }
 }
 
