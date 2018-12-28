@@ -303,18 +303,17 @@ pub fn run_command(path: &PathBuf, cmd: Expression, timeout: u64) -> Result<Comm
     Ok(res)
 }
 
-fn run_with_timeout(timeout: u64, cmd: ::duct::Expression) -> Result<CommandResult, Error> {
-    #[cfg_attr(not(unix), allow(unused_mut))]
-    let mut new_cmd = cmd;
+#[cfg_attr(not(unix), allow(unused_mut))]
+fn run_with_timeout(timeout: u64, mut cmd: ::duct::Expression) -> Result<CommandResult, Error> {
     #[cfg(unix)]
     {
         use std::os::unix::process::CommandExt;
-        new_cmd = cmd.before_spawn(|cmd| {
+        cmd = cmd.before_spawn(|cmd| {
             cmd.uid(1000);
             Ok(())
         });
     }
-    let child = new_cmd
+    let child = cmd
         .stdout_capture()
         .stderr_capture()
         .start()?;
