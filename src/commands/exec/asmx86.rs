@@ -14,7 +14,7 @@ impl Asmx86 {
 
 impl Language for Asmx86 {
     fn get_lang_name(&self) -> String {
-        "Asm".into()
+        "Asm 32 bit".into()
     }
 
     fn get_source_file_ext(&self) -> String {
