@@ -4,9 +4,6 @@ services:
 before_install:
   - docker build -t rustacean -f Dockerfile.test .
 
-env:
-  - WEBHOOK_URL=https://discordapp.com/api/webhooks/524649101762232330/FgGVFuuUbyUt-5ZjmQUdjSS-SSaoId3PgtUURdjBq1nsP_DeiUrDgaqcvg8SGcKvkoqu
-
 script:
   - docker run rustacean /bin/sh -c "cargo test"
 
