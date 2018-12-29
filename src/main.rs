@@ -30,7 +30,6 @@ use serenity::http;
 use diesel::SqliteConnection;
 use diesel::r2d2::{ ConnectionManager, Pool };
 use typemap::Key;
-use duct::cmd;
 
 use std::io::Read;
 use std::collections::{ HashSet, HashMap };
@@ -102,8 +101,6 @@ impl EventHandler for Handler {
             let cleanup_min_age = std::time::Duration::from_secs(60 * 60);
             loop {
                 let snippets_dir = commands::exec::get_snippets_directory();
-                std::fs::create_dir_all(&snippets_dir).unwrap();
-                let _ = cmd!("chown", "-R", "dev", snippets_dir.to_str().unwrap()).run();
                 let user_dirs = std::fs::read_dir(snippets_dir).unwrap();
                 for user_dir in user_dirs {
                     let snippet_files = std::fs::read_dir(user_dir.unwrap().path()).unwrap();
@@ -342,4 +339,10 @@ fn set_game_presence(ctx: &Context, game_name: &str) {
     let game = serenity::model::gateway::Game::playing(game_name);
     let status = serenity::model::user::OnlineStatus::Online;
     ctx.set_presence(Some(game), status);
+}
+
+fn is_running_as_docker_container() -> bool {
+    std::env::args().into_iter().any(|arg| {
+        arg.to_lowercase() == "--docker"
+    })
 }

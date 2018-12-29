@@ -133,7 +133,7 @@ fn test_cpp() {
 
 #[test]
 fn test_python() {
-    test_lang(String::from("print(\"test\", end=\"\")"), String::from("python"), 0, false, String::from("test"));
+    test_lang(String::from("print('test', end='')"), String::from("python"), 0, false, String::from("test"));
 }
 
 #[test]
@@ -149,11 +149,13 @@ fn test_javascript() {
 #[test]
 fn test_csharp() {
     test_lang(String::from("Console.Write(\"test\");"), String::from("cs"), 0, false, String::from("test"));
+    test_lang(String::from("using System; class Hello { static void Main() { Console.Write(\"test\"); } }"), String::from("cs"), 0, false, String::from("test"));
 }
 
 #[test]
 fn test_java() {
     test_lang(String::from("System.out.print(\"test\");"), String::from("java"), 0, false, String::from("test"));
+    test_lang(String::from("public class HelloWorld { public static void main(String[] args) { System.out.print(\"test\"); } }"), String::from("java"), 0, false, String::from("test"));
 }
 
 #[test]
@@ -216,10 +218,11 @@ int 80h"#);
 #[test]
 fn test_vb() {
     test_lang(String::from("Console.Write(\"test\")"), String::from("vb"), 0, true, String::from("test"));
+    test_lang(String::from("Imports System\r\nModule HelloWorld\r\nSub Main()\r\nConsole.Write(\"test\")\r\nEnd Sub\r\nEnd Module"), String::from("vb"), 0, true, String::from("test"));
 }
 
 #[test]
 fn test_kotlin() {
-    test_lang(String::from("fun main(args: Array<String>) {\nprint(\"test\")\n}"), String::from("kt"), 0, false, String::from("test"));
     test_lang(String::from("print(\"test\")"), String::from("kt"), 0, false, String::from("test"));
+    test_lang(String::from("fun main(args: Array<String>) {\nprint(\"test\")\n}"), String::from("kt"), 0, false, String::from("test"));
 }

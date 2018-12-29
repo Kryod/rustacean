@@ -67,13 +67,19 @@ fn cleanup(src_path: &PathBuf, exe_path: Option<&PathBuf>) {
     };
 }
 
-fn pre_process_output(code: &str) -> String {
-    let mut res: String = code.into();
-    res = res.replace("```", "");
-    res = res.replace("@everyone", "@ everyone");
-    res = res.replace("@here", "@ here");
+fn pre_process_code(mut code: String) -> String {
+    let re = regex::Regex::new(r"[\u200B-\u200F]").unwrap(); // Invisible characters (Zero-Width Space, Zero Width Non-Joiner, Zero Width Joiner, Left-To-Right Mark, Right-To-Left Mark)
+    code = re.replace_all(&code, "").into();
 
-    res
+    code
+}
+
+fn pre_process_output(mut output: String) -> String {
+    output = output.replace("```", "");
+    output = output.replace("@everyone", "@ everyone");
+    output = output.replace("@here", "@ here");
+
+    output
 }
 
 command!(exec(ctx, msg, _args) {
@@ -135,6 +141,7 @@ command!(exec(ctx, msg, _args) {
             return Ok(());
         },
     };
+    code = pre_process_code(code);
     if let Some(modified) = lang.pre_process_code(&code, &src_path) {
         match fs::write(src_path.as_path(), modified) {
             Ok(_) => {},
@@ -186,10 +193,10 @@ command!(exec(ctx, msg, _args) {
     };
 
     let mut reply = String::new();
-    compilation.stderr = pre_process_output(&compilation.stderr);
-    compilation.stdout = pre_process_output(&compilation.stdout);
-    execution.stderr = pre_process_output(&execution.stderr);
-    execution.stdout = pre_process_output(&execution.stdout);
+    compilation.stderr = pre_process_output(compilation.stderr);
+    compilation.stdout = pre_process_output(compilation.stdout);
+    execution.stderr = pre_process_output(execution.stderr);
+    execution.stdout = pre_process_output(execution.stdout);
     if compilation.timed_out {
         // Compilation timed out
         reply = format!("{}\n:x: Compilation timed out", reply);
@@ -270,7 +277,15 @@ fn get_random_filename(ext: &str) -> String {
 }
 
 pub fn get_snippets_directory() -> PathBuf {
-    PathBuf::from("snippets")
+    let path = PathBuf::from("snippets");
+    if !path.exists() {
+        fs::create_dir_all(&path).unwrap();
+        if ::is_running_as_docker_container() {
+            let _ = cmd!("chown", "dev", path.to_str().unwrap()).run();
+        }
+    }
+
+    path
 }
 
 pub fn save_code(code: &str, author: &serenity::model::user::User, ext: &str) -> Result<PathBuf, Error> {
@@ -290,7 +305,9 @@ pub fn save_code(code: &str, author: &serenity::model::user::User, ext: &str) ->
     }
     fs::write(path.as_path(), code)?;
 
-    let _ = cmd!("chown", "dev", path.as_path()).run();
+    if ::is_running_as_docker_container() {
+        let _ = cmd!("chown", "dev", path.as_path()).run();
+    }
 
     Ok(path)
 }
@@ -307,11 +324,13 @@ pub fn run_command(path: &PathBuf, cmd: Expression, timeout: u64) -> Result<Comm
 fn run_with_timeout(timeout: u64, mut cmd: ::duct::Expression) -> Result<CommandResult, Error> {
     #[cfg(unix)]
     {
-        use std::os::unix::process::CommandExt;
-        cmd = cmd.before_spawn(|cmd| {
-            cmd.uid(1000);
-            Ok(())
-        });
+        if ::is_running_as_docker_container() {
+            use std::os::unix::process::CommandExt;
+            cmd = cmd.before_spawn(|cmd| {
+                cmd.uid(1000);
+                Ok(())
+            });
+        }
     }
     let child = cmd
         .stdout_capture()

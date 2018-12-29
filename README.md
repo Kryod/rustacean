@@ -43,7 +43,7 @@ printf("Oh hi Discord!");
 
 ### Installing
 
-⚠️ It is recommended to **[run Rustacean as a Docker container](readme/docker.md)** instead of directly on your machine, otherwise **users will be able to access your file system**.
+⚠️ It is recommended to **[run Rustacean as a Docker container](readme/docker.md)** instead of directly on your machine, otherwise **users will be able to access and alter your file system**.
 
 Create a clone of this project on your development machine:
 ```sh
