@@ -1,4 +1,5 @@
 discord_token = "<YOUR_DISCORD_APP_TOKEN>"
+#dbl_api_key = "<YOUR_DBL_API_KEY>" # Your discordbots.org API key. After registering a bot, get your key here: https://discordbots.org/api/docs#mybots. (Uncomment the line by removing the leading '#' if you want to use this feature)
 command_prefix = "~"
 bot_owners = [
     123456, # Paste the Discord user IDs of your bot owners here

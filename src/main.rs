@@ -17,6 +17,7 @@ pub mod lang_manager;
 pub mod tools;
 pub mod schema;
 pub mod models;
+pub mod dbl;
 mod test;
 
 use lang_manager::LangManager;
@@ -48,6 +49,7 @@ impl Key for ShardManagerContainer {
 #[derive(Deserialize, Clone)]
 struct Settings {
     pub discord_token: String,
+    pub dbl_api_key: Option<String>,
     pub command_prefix: String,
     pub log_level_term: String,
     pub log_level_file: String,
@@ -79,6 +81,12 @@ impl EventHandler for Handler {
 
         let ctx = Arc::new(Mutex::new(ctx));
         std::thread::spawn(move || {
+            let dbl_api_key = {
+                let ctx_lock = ctx.lock().unwrap();
+                let data = ctx_lock.data.lock();
+                let settings = data.get::<Settings>().unwrap().lock().unwrap();
+                settings.dbl_api_key.clone()
+            };
             // Game presence status rotation
             loop {
                 set_game_presence_help(&ctx.lock().unwrap());
@@ -92,6 +100,9 @@ impl EventHandler for Handler {
 
                 let guilds = get_connected_guilds(&ctx.lock().unwrap());
                 set_game_presence(&ctx.lock().unwrap(), &format!("On {} servers", guilds));
+                if dbl_api_key.is_some() {
+                    let _ = dbl::post_stats(ready.user.id, dbl_api_key.as_ref().unwrap(), guilds);
+                }
                 std::thread::sleep(std::time::Duration::from_secs(15));
             }
         });
@@ -284,6 +295,7 @@ fn main() {
                 .bucket("exec_bucket"))
             .command("languages", |c| c
                 .cmd(commands::languages::languages)
+                .batch_known_as(["langs", "language", "lang"].iter())
                 .desc(&format!("Get a list of available programming languages for the `{}exec` command.", command_prefix)))
         )
         .group(":star: Administrator", |g| g

@@ -17,7 +17,6 @@ Register a Discord bot here https://discordapp.com/developers/applications/me
 Set up your environment:
 ```sh
 user@machine:~$ cd rustacean/ # Go to your copy of this repository
-user@machine:~/rustacean$ cargo run update-db
 user@machine:~/rustacean$ cp config.toml.example config.toml
 user@machine:~/rustacean$ nano config.toml # Edit this file to set your Discord bot credentials
 ```
@@ -25,13 +24,14 @@ user@machine:~/rustacean$ nano config.toml # Edit this file to set your Discord 
 Then you can build the image:
 
 ```sh
-user@machine:~$ sudo docker build -t rusttest -f Dockerfile.test .
+user@machine:~/rustacean$ sudo docker build -t rusttest -f Dockerfile.test .
 ```
 
 Now you have an environnement with all the required dependencies. To start working you need to run the docker and link it with the folder where you "git cloned" this repository.
 
 ```sh
-user@machine:~$ sudo docker run -it -v /path/to/rustacean:/home rusttest
+user@machine:~/rustacean$ sudo docker run --name "rustaceantest" -it -v /path/to/rustacean:/home rusttest
+user@machine:~/rustacean$ sudo docker exec -it rustaceantest cargo run update-db
 ```
 
 Now your changes locally will affect files on the docker and vice-versa. You can launch the bot with `cargo run` or test with `cargo test`. 
