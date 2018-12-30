@@ -226,3 +226,9 @@ fn test_kotlin() {
     test_lang(String::from("print(\"test\")"), String::from("kt"), 0, false, String::from("test"));
     test_lang(String::from("fun main(args: Array<String>) {\nprint(\"test\")\n}"), String::from("kt"), 0, false, String::from("test"));
 }
+
+#[test]
+#[cfg(ignore)]
+fn test_env() {
+    assert_eq!(true, ::is_running_as_docker_container());
+}

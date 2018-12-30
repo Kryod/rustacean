@@ -30,8 +30,8 @@ user@machine:~/rustacean$ sudo docker build -t rusttest -f Dockerfile.test .
 Now you have an environnement with all the required dependencies. To start working you need to run the docker and link it with the folder where you "git cloned" this repository.
 
 ```sh
-user@machine:~/rustacean$ sudo docker run --name "rustaceantest" -it -v /path/to/rustacean:/home rusttest
-user@machine:~/rustacean$ sudo docker exec -it rustaceantest cargo run update-db
+user@machine:~/rustacean$ sudo docker run -it -v "$(pwd)":/home rusttest
+root@docker-id:/home$ cargo run update-db
 ```
 
 Now your changes locally will affect files on the docker and vice-versa. You can launch the bot with `cargo run` or test with `cargo test`. 

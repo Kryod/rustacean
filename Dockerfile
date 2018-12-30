@@ -39,4 +39,4 @@ ENV DOCKER_ENV=true
 
 RUN cargo build --release
 
-CMD ["cargo", "run", "--release", "--", "--docker"]
+CMD ["cargo", "run", "--release"]
