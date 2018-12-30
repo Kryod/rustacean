@@ -342,7 +342,5 @@ fn set_game_presence(ctx: &Context, game_name: &str) {
 }
 
 fn is_running_as_docker_container() -> bool {
-    std::env::args().into_iter().any(|arg| {
-        arg.to_lowercase() == "--docker"
-    })
+    !std::env::var("DOCKER_ENV").is_err()
 }

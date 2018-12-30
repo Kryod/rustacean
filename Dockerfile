@@ -35,6 +35,8 @@ WORKDIR /home
 
 RUN useradd -d /home --uid 1000 -s /bin/bash -p dev dev
 
+ENV DOCKER_ENV=true
+
 RUN cargo build --release
 
 CMD ["cargo", "run", "--release", "--", "--docker"]
