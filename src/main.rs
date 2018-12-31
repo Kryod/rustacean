@@ -306,15 +306,15 @@ fn main() {
                 .guild_only(true)
                 .required_permissions(Permissions::ADMINISTRATOR)
                 .owner_privileges(true))
-            .command("logs", |c| c
-                .cmd(commands::logs::logs)
-                .desc("Returns logs of the bot. You can specify a scope (INFO, DEBUG, ALL, FULL or a specific number of lignes). By default it gives the last 11 lignes.")
-                .example("INFO 20")
-                .owners_only(true))
         )
         .group(":robot: Bot owner", |g| g
             .command("quit", |c| c
                 .cmd(commands::owner::quit)
+                .owners_only(true))
+            .command("logs", |c| c
+                .cmd(commands::logs::logs)
+                .desc("Returns logs of the bot. You can specify a string to search (INFO, DEBUG, ...). By default it gives the last 11 lignes.")
+                .example("20 INFO")
                 .owners_only(true))
         )
     );
