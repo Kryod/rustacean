@@ -307,6 +307,7 @@ pub fn save_code(code: &str, author: &serenity::model::user::User, ext: &str) ->
 
     if ::is_running_as_docker_container() {
         let _ = cmd!("chown", "dev", path.as_path()).run();
+        let _ = cmd!("chown", "dev", path.parent().unwrap()).run();
     }
 
     Ok(path)
