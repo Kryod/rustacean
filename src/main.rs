@@ -310,9 +310,7 @@ fn main() {
                 .cmd(commands::logs::logs)
                 .desc("Returns logs of the bot. You can specify a scope (INFO, DEBUG, ALL, FULL or a specific number of lignes). By default it gives the last 11 lignes.")
                 .example("INFO 20")
-                .guild_only(true)
-                .required_permissions(Permissions::ADMINISTRATOR)
-                .owner_privileges(true))
+                .owners_only(true))
         )
         .group(":robot: Bot owner", |g| g
             .command("quit", |c| c
