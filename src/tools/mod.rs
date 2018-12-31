@@ -1,6 +1,7 @@
 use std::env;
 
 pub mod update_db;
+pub mod print_guilds;
 
 pub fn tools() -> bool {
     let mut args = env::args();
@@ -18,6 +19,7 @@ pub fn tools() -> bool {
 
     match command {
         "update-db" => update_db::update_db(),
+        "print-guilds" => print_guilds::print_guilds(),
         _ => return false,
     };
 
