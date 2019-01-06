@@ -71,6 +71,9 @@ fn lock_directory(path: &PathBuf) {
         // Make sure that the parent directory exists, otherwise creating the lock will fail
         let parent = lock_file.parent().expect("Could not get lock file parent directory");
         fs::create_dir_all(parent).expect("Could not create lock file parent directory");
+        if ::is_running_as_docker_container() {
+            let _ = cmd!("chown", "dev", &parent).run();
+        }
 
         // We use .create_new(true) to prevent race conditions
         let file = fs::OpenOptions::new()
