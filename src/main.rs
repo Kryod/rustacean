@@ -260,12 +260,6 @@ fn main() {
                 None => true,
             }
         })
-        // Set a function that's called whenever an attempted command-call's
-        // command could not be found.
-        .unrecognised_command(|_, msg, unknown_command_name| {
-            error!("Could not find command named '{}'", unknown_command_name);
-            let _ = msg.channel_id.say(&format!("Could not find command named '{}'", unknown_command_name));
-        })
         // Set a function that's called whenever a command's execution didn't complete for one
         // reason or another. For example, when a user has exceeded a rate-limit or a command
         // can only be performed by the bot owner.
@@ -283,7 +277,7 @@ fn main() {
                 _ => {},
             };
         })
-        .help(commands::help::help)
+        .help(serenity::framework::standard::help_commands::with_embeds)
         // Time out for exec: Can't be used more than 2 times per 30 seconds, with a 5 second delay
         //.bucket("exec_bucket", 5, 30, 2)
         // Can't be used more than once per 5 seconds:
@@ -308,6 +302,13 @@ fn main() {
                 .cmd(commands::ban::ban)
                 .desc("Ban a user from using the bot. This command will not ban the target user from the Discord server, however.")
                 .example("@user 2019-11-24")
+                .guild_only(true)
+                .required_permissions(Permissions::ADMINISTRATOR)
+                .owner_privileges(true))
+            .command("unban", |c| c
+                .cmd(commands::unban::unban)
+                .desc("Lifts a previously issued ban. This command will not unban the target user from the Discord server, however.")
+                .example("@user")
                 .guild_only(true)
                 .required_permissions(Permissions::ADMINISTRATOR)
                 .owner_privileges(true))

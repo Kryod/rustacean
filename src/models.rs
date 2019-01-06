@@ -84,6 +84,24 @@ impl User {
             Err(e) => panic!(e),
         }
     }
+
+    pub fn unban(&self, msg_guild: GuildId, lift_globally: bool, db: &::DbPoolType) {
+        let db = db.get().unwrap();
+
+        use diesel::dsl::sql;
+        use schema::ban::dsl::*;
+
+        let filter = sql(&format!("user = {}", self.id));
+        let filter = if !lift_globally {
+            filter.sql(&format!(" AND guild = {}", msg_guild))
+        } else {
+            filter.sql("")
+        };
+
+        let _ = diesel::delete(ban)
+            .filter(filter)
+            .execute(&db);
+    }
 }
 
 impl Ban {
@@ -180,6 +198,10 @@ impl Ban {
     pub fn is_banned_for_guild(&self, msg_guild: Option<GuildId>) -> bool {
         let guild = self.get_guild();
         !self.is_over() && (guild.is_none() || msg_guild.is_none() || guild.unwrap() == msg_guild.unwrap())
+    }
+
+    pub fn is_global(&self) -> bool {
+        self.get_guild().is_none()
     }
 }
 
