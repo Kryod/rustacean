@@ -1,4 +1,5 @@
 [![Build Status](https://travis-ci.org/Kryod/rustacean.svg?branch=master)](https://travis-ci.org/Kryod/rustacean)
+
 [![Discord Bots](https://discordbots.org/api/widget/509051376655925258.svg)](https://discordbots.org/bot/509051376655925258)
 
 # Rustacean

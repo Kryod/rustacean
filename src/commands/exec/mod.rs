@@ -93,16 +93,16 @@ fn lock_directory(path: &PathBuf) {
 pub fn cleanup_user_snippet_directory(user: UserId) -> Result<(), Error> {
     let dir = get_snippets_directory_for_user(user)?;
     info!("Cleaning up user snippet directory {}...", dir.to_str().unwrap());
+    let dir_str = dir.to_str().expect("Could not get user snippet directory as str");
     if cfg!(windows) {
         // On Windows, remove_dir_all() sometimes gives an Err with "The directory is not empty", so we use a command instead
-        let dir_str = dir.to_str().expect("Could not get user snippet directory as str");
         let arg = format!("del /S /Q {}", dir_str);
         if let Err(e) = std::process::Command::new("cmd").args(&["/C", &arg]).output() {
             warn!("Could not cleanup user snippet directory: {}", e);
             return Err(Error::new(ErrorKind::Other, format!("Could not cleanup user snippet directory: {}", e)));
         };
     } else {
-        if let Err(e) = fs::remove_dir_all(dir) {
+        if let Err(e) = std::process::Command::new("rm").args(&["-rf", dir_str]).output() {
             warn!("Could not cleanup user snippet directory: {}", e);
             return Err(Error::new(ErrorKind::Other, format!("Could not cleanup user snippet directory: {}", e)));
         };
