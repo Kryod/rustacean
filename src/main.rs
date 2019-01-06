@@ -135,10 +135,29 @@ impl EventHandler for Handler {
             loop {
                 info!("Running test command!");
 
+                let webhook = http::get_webhook_with_token(webhook_id, &webhook_token)
+                    .expect("valid webhook");
+
                 let output = Command::new("cargo")
                     .arg("test")
-                    .output()
-                    .expect("Could not run cargo test");
+                    .output();
+                let output = match output {
+                    Ok(out) => out,
+                    Err(err) => {
+                        error!("Could not run test: {}", err);
+                        let embed = Embed::fake(|e| e
+                            .title("Rustacean encountered an error")
+                            .colour(serenity::utils::Colour::RED)
+                            .description("Could not run test")
+                            .field("Error", err, true));
+                        let _ = webhook.execute(false, |w| w
+                            .content(&format!("<@&{}>, we have a problem!", webhook_role))
+                            .username("Rustacean Alert")
+                            .embeds(vec![embed]))
+                            .expect("Error executing");
+                        break;
+                    }
+                };
 
                 info!("Ran test command!");
 
@@ -153,8 +172,6 @@ impl EventHandler for Handler {
 
                 stdout.truncate(2000);
                 stderr.truncate(1000);
-                let webhook = http::get_webhook_with_token(webhook_id, &webhook_token)
-                    .expect("valid webhook");
 
                 let exit_code = output.status.code();
                 let (embed, ping) = match exit_code {
@@ -162,6 +179,7 @@ impl EventHandler for Handler {
                         info!("Tests passed successfully!");
                         (Embed::fake(|e| e
                             .title("Rustacean is doing fine")
+                            .colour(serenity::utils::Colour::DARK_GREEN)
                             .description(&stdout)), false)
 
                     },
@@ -169,6 +187,7 @@ impl EventHandler for Handler {
                         warn!("An error occured!");
                         (Embed::fake(|e| e
                             .title("Rustacean encountered an issue")
+                            .colour(serenity::utils::Colour::RED)
                             .description(&stdout)
                             .field("Error", &stderr, true)), true)
                     },
@@ -176,16 +195,17 @@ impl EventHandler for Handler {
                         error!("An error occured!");
                         (Embed::fake(|e| e
                             .title("Rustacean encountered an error")
+                            .colour(serenity::utils::Colour::RED)
                             .description(&stdout)
                             .field("Error", &stderr, true)), true)
                     },
                 };
 
                 let content = match ping {
-                    true => format!("There is a problem <@&{}>!", webhook_role),
-                    false => "Everything is fine.".into()
+                    true => format!("<@&{}>, we have a problem!", webhook_role),
+                    false => "Everything is fine :sunny:".into()
                 };
-                
+
                 let _ = webhook.execute(false, |w| w
                             .content(&content)
                             .username("Rustacean Alert")
@@ -378,7 +398,13 @@ fn main() {
         // Can't be used more than once per 5 seconds:
         .simple_bucket("exec_bucket", 5)
         .group(":desktop: Basic", |g| g
-            .command("git", |c| c.cmd(commands::git::git))
+            .command("git", |c| c
+                .cmd(commands::git::git)
+                .batch_known_as(["github", "repository", "repo"].iter())
+                .desc("Get a link to Rustacean's GitHub repository."))
+            .command("invite", |c| c
+                .cmd(commands::invite::invite)
+                .desc("Get an invite link to add Rustacean to other servers."))
             .command("exec", |c| c
                 .cmd(commands::exec::exec)
                 .after(|_ctx: &mut Context, msg: &Message, _res: &Result<(), serenity::framework::standard::CommandError>| {

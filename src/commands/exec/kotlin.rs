@@ -10,6 +10,14 @@ impl Kotlin {
     fn get_class_name(&self, src_path: &PathBuf) -> String {
         src_path.with_extension("").file_name().unwrap().to_str().unwrap().into()
     }
+
+    fn get_compiler(&self) -> String {
+        if cfg!(windows) {
+            "kotlinc.bat".into()
+        } else {
+            "kotlinc".into()
+        }
+    }
 }
 
 impl Language for Kotlin {
@@ -38,8 +46,7 @@ impl Language for Kotlin {
     }
 
     fn get_compiler_command(&self, src_path: &PathBuf, _exe_path: &PathBuf) -> Option<Expression> {
-        Some(cmd!("kotlinc", src_path, "-include-runtime", "-d", format!("{}.jar", self.get_class_name(src_path))))
-
+        Some(cmd!(self.get_compiler(), src_path, "-include-runtime", "-d", format!("{}.jar", self.get_class_name(src_path))))
     }
 
     fn get_execution_command(&self, path: &PathBuf) -> Expression {
@@ -47,6 +54,6 @@ impl Language for Kotlin {
     }
 
     fn check_compiler_or_interpreter(&self) -> Expression {
-        cmd!("kotlinc", "-version")
+        cmd!(self.get_compiler(), "-version")
     }
 }

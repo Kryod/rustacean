@@ -99,7 +99,7 @@ C:\Users\Rustacean>node --version
 v10.14.1
 ```
 
-#### C#
+#### C# .NET / Visual Basic .NET
 
 In the Windows Start Menu search bar, type "Visual Studio Installer" and run it (you should have it installed since you installed the build tools in the first section).
 
@@ -144,4 +144,16 @@ Open a new `cmd` window and check if the interpreter is working properly:
 ```cmd
 C:\Users\Rustacean>lua53 -v
 Lua 5.3.4  Copyright (C) 1994-2017 Lua.org, PUC-Rio
+```
+
+#### Kotlin
+
+Go to https://kotlinlang.org/docs/tutorials/command-line.html#downloading-the-compiler and follow the "GitHub Releases" link.
+
+Download the "kotlin-compiler-x.x.x.zip" file. Extract the contents of the archive and add your resulting `Kotlin\bin` directory to your `Path` environment variable (if you extracted Kotlin in `C:\Program Files\Kotlin` for example, add `C:\Program Files\Kotlin\bin` to your `Path` variable).
+
+Open a new `cmd` window and check if the interpreter is working properly:
+```cmd
+C:\Users\Rustacean>kotlinc -version
+info: kotlinc-jvm 1.3.11 (JRE 1.8.0_121-b13)
 ```

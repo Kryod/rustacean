@@ -29,8 +29,8 @@ pub use self::php::Php;
 mod python;
 pub use self::python::Python;
 
-mod js;
-pub use self::js::JavaScript;
+mod javascript;
+pub use self::javascript::JavaScript;
 
 mod csharp;
 pub use self::csharp::Csharp;
@@ -88,9 +88,6 @@ fn lock_directory(path: &PathBuf) {
         };
     }
     info!("Locked up user snippet directory {}", lock_file.parent().unwrap().to_str().unwrap());
-    if let Err(e) = fs::File::create(lock_file) {
-        error!("Could not lock user snippet directory: {}", e);
-    };
 }
 
 pub fn cleanup_user_snippet_directory(user: UserId) -> Result<(), Error> {
