@@ -1,7 +1,7 @@
 use std::collections::hash_map::Entry::{ Vacant, Occupied };
 
 use serenity::framework::standard::ArgError::{ Eos, Parse };
-use serenity::model::user::User;
+use serenity::model::prelude::{ User, Permissions };
 use chrono::prelude::{ NaiveDate, NaiveDateTime };
 
 command!(ban(ctx, msg, args) {
@@ -9,11 +9,6 @@ command!(ban(ctx, msg, args) {
 
     let (discord_user, new_ban) = {
         let db = data.get::<::DbPool>().unwrap();
-        let is_bot_owner = {
-            let settings = data.get::<::Settings>().unwrap().lock().unwrap();
-            let owners = &settings.bot_owners;
-            owners.contains(&msg.author.id)
-        };
 
         let user = args.single::<User>();
         let time = args.single::<String>();
@@ -34,8 +29,52 @@ command!(ban(ctx, msg, args) {
             },
         };
 
+        let (is_bot_owner, is_target_owner) = {
+            let settings = data.get::<::Settings>().unwrap().lock().unwrap();
+            let owners = &settings.bot_owners;
+            (
+                owners.contains(&msg.author.id),
+                owners.contains(&discord_user.id),
+            )
+        };
+
         if discord_user.id == msg.author.id {
             let _ = msg.reply("You cannot ban yourself...");
+            return Ok(());
+        }
+
+        if is_target_owner {
+            let _ = msg.reply("You cannot ban this user.");
+            return Ok(());
+        }
+
+        let channel = msg.channel_id;
+        let channel = channel.to_channel();
+        let channel = match channel {
+            Ok(channel) => channel,
+            Err(e) => {
+                error!("ban.rs: Could not fetch channel: {}", e);
+                let _ = msg.reply(&format!("An error occurred ({})", e));
+                return Ok(());
+            },
+        };
+
+        let is_target_admin = match channel.guild() {
+            Some(guild_channel_lock) => {
+                let guild = guild_channel_lock.read().guild();
+                match guild {
+                    Some(guild_lock) => {
+                        let permissions = guild_lock.read().member_permissions(discord_user.id);
+                        permissions.contains(Permissions::ADMINISTRATOR)
+                    },
+                    None => false,
+                }
+            },
+            None => false,
+        };
+
+        if !is_bot_owner && is_target_admin {
+            let _ = msg.reply("You cannot ban an other guild administrator.");
             return Ok(());
         }
 

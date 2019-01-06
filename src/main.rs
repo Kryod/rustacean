@@ -23,9 +23,9 @@ mod test;
 use lang_manager::LangManager;
 
 use serenity::client::bridge::gateway::{ ShardManager };
-use serenity::framework::standard::{ DispatchError, StandardFramework, help_commands};
-use serenity::model::prelude::{ Guild, PartialGuild, Ready, Message, ResumedEvent };
-use serenity::prelude::{ Client, Context, EventHandler, RwLock };
+use serenity::framework::standard::{ DispatchError, StandardFramework };
+use serenity::model::prelude::{ Ready, Message, ResumedEvent };
+use serenity::prelude::{ Client, Context, EventHandler };
 use serenity::model::permissions::Permissions;
 use serenity::http;
 use diesel::SqliteConnection;
@@ -61,23 +61,12 @@ impl Key for Settings {
     type Value = Arc<Mutex<Settings>>;
 }
 
-struct GuildCounter(usize);
-
-impl Key for GuildCounter {
-    type Value = Arc<Mutex<GuildCounter>>;
-}
-
 struct Handler;
 
 impl EventHandler for Handler {
     fn ready(&self, ctx: Context, ready: Ready) {
         info!("Connected as {}", ready.user.name);
         info!("Open this link in a web browser to invite {} to a Discord server:\r\nhttps://discordapp.com/oauth2/authorize?client_id={}&scope=bot&permissions=378944", ready.user.name, ready.user.id);
-
-        {
-            let mut data = ctx.data.lock();
-            data.get_mut::<GuildCounter>().unwrap().lock().unwrap().0 += ready.guilds.len();
-        }
 
         let ctx = Arc::new(Mutex::new(ctx));
         std::thread::spawn(move || {
@@ -98,12 +87,17 @@ impl EventHandler for Handler {
                 set_game_presence_exec(&ctx.lock().unwrap());
                 std::thread::sleep(std::time::Duration::from_secs(30));
 
-                let guilds = get_connected_guilds(&ctx.lock().unwrap());
-                set_game_presence(&ctx.lock().unwrap(), &format!("On {} servers", guilds));
-                if dbl_api_key.is_some() {
-                    let _ = dbl::post_stats(ready.user.id, dbl_api_key.as_ref().unwrap(), guilds);
-                }
-                std::thread::sleep(std::time::Duration::from_secs(15));
+                let guilds = get_guilds();
+                match guilds {
+                    Ok(count) => {
+                        set_game_presence(&ctx.lock().unwrap(), &format!("On {} servers", count));
+                        if dbl_api_key.is_some() {
+                            let _ = dbl::post_stats(ready.user.id, dbl_api_key.as_ref().unwrap(), count);
+                        }
+                        std::thread::sleep(std::time::Duration::from_secs(15));
+                    },
+                    Err(e) => error!("Error while retrieving guild count: {}", e),
+                };
             }
         });
 
@@ -111,18 +105,22 @@ impl EventHandler for Handler {
             // Periodic snippets directory cleanup
             let cleanup_min_age = std::time::Duration::from_secs(60 * 60);
             loop {
-                let snippets_dir = commands::exec::get_snippets_directory();
-                let user_dirs = std::fs::read_dir(snippets_dir).unwrap();
-                for user_dir in user_dirs {
-                    let snippet_files = std::fs::read_dir(user_dir.unwrap().path()).unwrap();
-                    for file in snippet_files {
-                        let file = file.unwrap().path();
-                        let metadata = std::fs::metadata(&file).unwrap();
-                        if metadata.is_file() && metadata.modified().unwrap().elapsed().unwrap() >= cleanup_min_age {
-                            let _ = std::fs::remove_file(file);
+                match commands::exec::get_snippets_directory() {
+                    Ok(snippets_dir) => {
+                        let user_dirs = std::fs::read_dir(snippets_dir).unwrap();
+                        for user_dir in user_dirs {
+                            let snippet_files = std::fs::read_dir(user_dir.unwrap().path()).unwrap();
+                            for file in snippet_files {
+                                let file = file.unwrap().path();
+                                let metadata = std::fs::metadata(&file).unwrap();
+                                if metadata.is_file() && metadata.created().unwrap().elapsed().unwrap() >= cleanup_min_age {
+                                    let _ = std::fs::remove_file(file);
+                                }
+                            }
                         }
-                    }
-                }
+                    },
+                    Err(_) => {},
+                };
 
                 std::thread::sleep(cleanup_min_age);
             }
@@ -135,18 +133,6 @@ impl EventHandler for Handler {
 
     fn message(&self, _: Context, _msg: Message) {
 
-    }
-
-    fn guild_create(&self, ctx: Context, _guild: Guild, is_new: bool) {
-        if is_new {
-            let mut data = ctx.data.lock();
-            data.get_mut::<GuildCounter>().unwrap().lock().unwrap().0 += 1;
-        }
-    }
-
-    fn guild_delete(&self, ctx: Context, _incomplete: PartialGuild, _full: Option<Arc<RwLock<Guild>>>) {
-        let mut data = ctx.data.lock();
-        data.get_mut::<GuildCounter>().unwrap().lock().unwrap().0 -= 1;
     }
 }
 
@@ -162,10 +148,23 @@ impl Key for Bans {
     type Value = HashMap<serenity::model::prelude::UserId, Vec<models::Ban>>;
 }
 
-fn get_connected_guilds(ctx: &Context) -> usize {
-    let data = ctx.data.lock();
-    let n = data.get::<GuildCounter>().unwrap().lock().unwrap().0;
-    n.clone()
+fn get_guilds() -> Result<usize, serenity::Error> {
+    let mut count = 0;
+    let mut last_guild_id = 0;
+    loop {
+        let guilds = serenity::http::get_guilds(&serenity::http::GuildPagination::After(last_guild_id.into()), 100)?;
+        let len = guilds.len();
+        count += len;
+        if len < 100 {
+            break;
+        }
+        match guilds.last() {
+            Some(last) => last_guild_id = *last.id.as_u64(),
+            None => {}
+        };
+    }
+
+    Ok(count)
 }
 
 fn init_settings() -> Settings {
@@ -179,6 +178,9 @@ fn init_settings() -> Settings {
 fn init_logging(settings: &Settings) {
     use simplelog::{ CombinedLogger, Config, LevelFilter, TermLogger, WriteLogger };
 
+    let mut config = Config::default();
+    config.time_format = Some("[%Y-%m-%d %H:%M:%S]");
+
     let log_level_term = LevelFilter::from_str(settings.log_level_term.as_ref()).expect("Invalid log level filter");
     let log_level_file = LevelFilter::from_str(settings.log_level_file.as_ref()).expect("Invalid log level filter");
 
@@ -186,8 +188,8 @@ fn init_logging(settings: &Settings) {
 
     CombinedLogger::init(
         vec![
-            TermLogger::new(log_level_term, Config::default()).unwrap(),
-            WriteLogger::new(log_level_file, Config::default(), log_file),
+            TermLogger::new(log_level_term, config).unwrap(),
+            WriteLogger::new(log_level_file, config, log_file),
         ]
     ).unwrap();
 }
@@ -226,7 +228,8 @@ fn main() {
 
     models::Ban::cleanup_outdated_bans(&pool);
 
-    let lang_manager = LangManager::new();
+    let mut lang_manager = LangManager::new();
+    lang_manager.check_available_languages();
 
     {
         let mut data = client.data.lock();
@@ -234,7 +237,6 @@ fn main() {
         data.insert::<ShardManagerContainer>(Arc::clone(&client.shard_manager));
         data.insert::<LangManager>(Arc::new(Mutex::new(lang_manager)));
         data.insert::<DbPool>(pool.clone());
-        data.insert::<GuildCounter>(Arc::new(Mutex::new(GuildCounter(0))));
         data.insert::<Bans>(models::Ban::get_bans(&pool));
     }
 
@@ -281,7 +283,7 @@ fn main() {
                 _ => {},
             };
         })
-        .help(help_commands::with_embeds)
+        .help(commands::help::help)
         // Time out for exec: Can't be used more than 2 times per 30 seconds, with a 5 second delay
         //.bucket("exec_bucket", 5, 30, 2)
         // Can't be used more than once per 5 seconds:
@@ -290,6 +292,9 @@ fn main() {
             .command("git", |c| c.cmd(commands::git::git))
             .command("exec", |c| c
                 .cmd(commands::exec::exec)
+                .after(|_ctx: &mut Context, msg: &Message, _res: &Result<(), serenity::framework::standard::CommandError>| {
+                    let _ = commands::exec::cleanup_user_snippet_directory(msg.author.id);
+                })
                 .batch_known_as(["execute", "run", "code"].iter())
                 .desc(&format!("Executes a code snippet. Your message needs to look like this:\r\n{}exec\r\n\\`\\`\\`language\r\n\r\ncode...\r\n\\`\\`\\`\r\nwhere `language` is the language of your choice.\r\nFor example:\r\n{}exec\r\n\\`\\`\\`javascript\r\nconsole.log(\"hi!\");\r\n\\`\\`\\`", command_prefix, command_prefix))
                 .bucket("exec_bucket"))

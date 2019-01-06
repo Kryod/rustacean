@@ -47,6 +47,7 @@ impl EventHandler for Handler {
         let mut data = ctx.data.lock();
         let mut counter = data.get_mut::<GuildReadyCounter>().unwrap().lock().unwrap();
         counter.set_total(guilds);
+        println!("{} guilds:", guilds);
     }
 
     fn guild_create(&self, ctx: Context, guild: Guild, is_new: bool) {
@@ -55,7 +56,7 @@ impl EventHandler for Handler {
             let mut counter = data.get_mut::<GuildReadyCounter>().unwrap().lock().unwrap();
             counter.add_ready();
         }
-        println!("  - {} (id: {}, {} users)", guild.name, guild.id, guild.members.len());
+        println!("  - {} (id: {}, {} members)", guild.name, guild.id, guild.members.len());
     }
 }
 

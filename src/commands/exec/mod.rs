@@ -5,8 +5,12 @@ use rand::Rng;
 use std::path::PathBuf;
 use std::io::{ Error, ErrorKind };
 use std::time::{ Instant, Duration };
-use rand::distributions::Alphanumeric;
+
 use duct::{ cmd, Expression };
+use serenity::model::id::UserId;
+use rand::distributions::Alphanumeric;
+
+use lang_manager::LangManager;
 
 pub mod language;
 
@@ -60,11 +64,50 @@ pub struct CommandResult {
     pub timed_out: bool,
 }
 
-fn cleanup(src_path: &PathBuf, exe_path: Option<&PathBuf>) {
-    let _ = std::fs::remove_file(src_path);
-    if let Some(exe_path) = exe_path {
-        let _ = std::fs::remove_file(exe_path);
+fn lock_directory(path: &PathBuf) {
+    let mut lock_file = path.clone();
+    lock_file.push(".lock");
+    loop {
+        // Make sure that the parent directory exists, otherwise creating the lock will fail
+        let parent = lock_file.parent().expect("Could not get lock file parent directory");
+        fs::create_dir_all(parent).expect("Could not create lock file parent directory");
+
+        // We use .create_new(true) to prevent race conditions
+        let file = fs::OpenOptions::new()
+            .create_new(true)
+            .write(true)
+            .open(&lock_file);
+
+        // Wait a bit and try again if the lock file could not be created (because it already exists) or break out of the loop if we could lock the directory
+        match file {
+            Err(_e) => std::thread::sleep(Duration::from_millis(20)),
+            Ok(_file) => break,
+        };
+    }
+    info!("Locked up user snippet directory {}", lock_file.parent().unwrap().to_str().unwrap());
+    if let Err(e) = fs::File::create(lock_file) {
+        error!("Could not lock user snippet directory: {}", e);
     };
+}
+
+pub fn cleanup_user_snippet_directory(user: UserId) -> Result<(), Error> {
+    let dir = get_snippets_directory_for_user(user)?;
+    info!("Cleaning up user snippet directory {}...", dir.to_str().unwrap());
+    if cfg!(windows) {
+        // On Windows, remove_dir_all() sometimes gives an Err with "The directory is not empty", so we use a command instead
+        let dir_str = dir.to_str().expect("Could not get user snippet directory as str");
+        let arg = format!("del /S /Q {}", dir_str);
+        if let Err(e) = std::process::Command::new("cmd").args(&["/C", &arg]).output() {
+            warn!("Could not cleanup user snippet directory: {}", e);
+            return Err(Error::new(ErrorKind::Other, format!("Could not cleanup user snippet directory: {}", e)));
+        };
+    } else {
+        if let Err(e) = fs::remove_dir_all(dir) {
+            warn!("Could not cleanup user snippet directory: {}", e);
+            return Err(Error::new(ErrorKind::Other, format!("Could not cleanup user snippet directory: {}", e)));
+        };
+    }
+    Ok(())
 }
 
 fn pre_process_code(mut code: String) -> String {
@@ -80,6 +123,76 @@ fn pre_process_output(mut output: String) -> String {
     output = output.replace("@here", "@ here");
 
     output
+}
+
+pub type BoxedLang = std::sync::Arc<std::boxed::Box<(dyn language::Language + std::marker::Sync + std::marker::Send + 'static)>>;
+pub fn get_lang(lang_manager: &LangManager, lang_code: &str) -> Result<BoxedLang, Error> {
+    match lang_manager.get(&lang_code.into()) {
+        Some(lang) => {
+            if lang_manager.is_language_available(&(*lang)) {
+                Ok(lang)
+            } else {
+                Err(Error::new(ErrorKind::Other, "This programming language is currently unavailable."))
+            }
+        },
+        None => {
+            let langs = lang_manager.get_languages_list();
+            Err(Error::new(ErrorKind::NotFound, format!("Unknown programming language\nHere are the languages available: {}", langs)))
+        }
+    }
+}
+
+pub fn run_code(mut code: String, lang: BoxedLang, author: UserId) -> Result<(CommandResult, CommandResult, String), Error> {
+    let src_path = match save_code(&code, author, &lang.get_source_file_ext()) {
+        Ok(path) => path,
+        Err(e) => {
+            return Err(Error::new(ErrorKind::Other, format!("An error occurred: {}", e)));
+        },
+    };
+    info!("Saving {} code in {}...", lang.get_lang_name(), src_path.to_str().unwrap());
+    code = pre_process_code(code);
+    if let Some(modified) = lang.pre_process_code(&code, &src_path) {
+        match fs::write(src_path.as_path(), modified) {
+            Ok(_) => {},
+            Err(e) => {
+                return Err(Error::new(ErrorKind::Other, format!("An error occurred: {}", e)));
+            },
+        };
+    }
+
+    let out_path = lang.get_out_path(&src_path);
+    let compilation = match lang.get_compiler_command(&src_path, &out_path) {
+        Some(command) => {
+            info!("Compiling {} code", lang.get_lang_name());
+            run_command(&src_path, command, 30)
+        },
+        None => Ok(CommandResult::default())
+    };
+    let compilation = match compilation {
+        Ok(res) => res,
+        Err(e) => {
+            return Err(Error::new(ErrorKind::Other, format!("An error occurred while compiling code snippet: {}", e)));
+        },
+    };
+
+    let execution = match compilation.exit_code {
+        Some(code) if code != 0 => {
+            // Return a default value if compilation failed
+            CommandResult::default()
+        },
+        _ => {
+            // Compilation succeeded, run the snippet
+            info!("Executing {} code", lang.get_lang_name());
+            match run_command(&src_path, lang.get_execution_command(&out_path), 10) {
+                Ok(res) => res,
+                Err(e) => {
+                    return Err(Error::new(ErrorKind::Other, format!("An error occurred while running code snippet: {}", e)));
+                }
+            }
+        }
+    };
+
+    Ok((compilation, execution, lang.get_lang_name()))
 }
 
 command!(exec(ctx, msg, _args) {
@@ -113,81 +226,26 @@ command!(exec(ctx, msg, _args) {
         },
     };
 
-    let data = ctx.data.lock();
-    let lang = {
-        let lang_manager = data.get::<::LangManager>().unwrap().lock().unwrap();
-        match lang_manager.get(&lang_code) {
-            Some(lang) => {
-                if lang_manager.is_language_available(&(*lang)) {
-                    lang
-                } else {
-                    let _ = msg.reply(&format!(":x: This programming language is currently unavailable."));
-                    return Ok(());
-                }
-            },
-            None => {
-                let _ = msg.reply(&format!(":x: Unknown programming language\nHere are the languages available: {}", langs));
+    let (mut compilation, mut execution, lang) = {
+        let lang = {
+            // We make sure to lock the data in a seperate code block,
+            // Otherwise we would block the mutex through the entire compiling and/or executing phases
+            let data = ctx.data.lock();
+            let mngr = data.get::<::LangManager>().unwrap().lock().unwrap();
+            get_lang(&mngr, lang_code.as_ref())
+        };
+        let lang = match lang {
+            Ok(lang) => lang,
+            Err(e) => {
+                let _ = msg.reply(&format!(":x: {}", e));
                 return Ok(());
             }
-        }
-    };
-    drop(data);
-
-    let src_path = match save_code(&code, &msg.author, &lang.get_source_file_ext()) {
-        Ok(path) => path,
-        Err(e) => {
-            let _ = msg.reply(&format!("Error: {}", e));
-            error!("Could not save code snippet: {}", e);
-            return Ok(());
-        },
-    };
-    code = pre_process_code(code);
-    if let Some(modified) = lang.pre_process_code(&code, &src_path) {
-        match fs::write(src_path.as_path(), modified) {
-            Ok(_) => {},
-            Err(e) => {
-                error!("Could not save code snippet: {}", e);
-                cleanup(&src_path, None);
-                return Ok(());
-            },
         };
-    }
-    info!("Saved {} code in {}", lang.get_lang_name(), src_path.to_str().unwrap());
-
-    let out_path = lang.get_out_path(&src_path);
-    let compilation = match lang.get_compiler_command(&src_path, &out_path) {
-        Some(command) => {
-            info!("Compiling {} code", lang.get_lang_name());
-            run_command(&src_path, command, 30)
-        },
-        None => Ok(CommandResult::default())
-    };
-    let mut compilation = match compilation {
-        Ok(res) => res,
-        Err(e) => {
-            let err = format!("An error occurred while compiling code snippet: {}", e);
-            let _ = msg.reply(&err);
-            cleanup(&src_path, None);
-            return Ok(());
-        },
-    };
-
-    let mut execution = match compilation.exit_code {
-        Some(code) if code != 0 => {
-            // Return a default value if compilation failed
-            CommandResult::default()
-        },
-        _ => {
-            // Compilation succeeded, run the snippet
-            info!("Executing {} code", lang.get_lang_name());
-            match run_command(&src_path, lang.get_execution_command(&out_path), 10) {
-                Ok(res) => res,
-                Err(e) => {
-                    let err = format!("An error occurred while running code snippet: {}", e);
-                    let _ = msg.reply(&err);
-                    cleanup(&src_path, Some(&out_path));
-                    return Ok(());
-                }
+        match run_code(code, lang, msg.author.id) {
+            Ok((c, e, l)) => (c, e, l),
+            Err(e) => {
+                let _ = msg.reply(&e.to_string());
+                return Ok(());
             }
         }
     };
@@ -231,12 +289,10 @@ command!(exec(ctx, msg, _args) {
         };
     }
 
-    cleanup(&src_path, Some(&out_path));
-
     {
         let data = ctx.data.lock();
         let db = data.get::<::DbPool>().unwrap();
-        let mut stat = ::models::LangStat::get(&lang.get_lang_name(), db);
+        let mut stat = ::models::LangStat::get(&lang, db);
         stat.increment_snippets_count(db);
     }
 
@@ -276,26 +332,34 @@ fn get_random_filename(ext: &str) -> String {
     name
 }
 
-pub fn get_snippets_directory() -> PathBuf {
-    let path = PathBuf::from("snippets");
-    if !path.exists() {
-        fs::create_dir_all(&path).unwrap();
-        if ::is_running_as_docker_container() {
-            let _ = cmd!("chown", "dev", path.to_str().unwrap()).run();
-        }
+pub fn get_snippets_directory() -> Result<PathBuf, Error> {
+    let mut dir = PathBuf::new();
+    dir.push(env::current_dir()?);
+    dir.push("snippets");
+    if !dir.exists() {
+        fs::create_dir_all(&dir)?;
     }
 
-    path
+    Ok(dir)
 }
 
-pub fn save_code(code: &str, author: &serenity::model::user::User, ext: &str) -> Result<PathBuf, Error> {
-    let mut path = PathBuf::new();
-    let cwd = env::current_dir()?;
+pub fn get_snippets_directory_for_user(user: UserId) -> Result<PathBuf, Error> {
+    let mut dir = get_snippets_directory()?;
+    dir.push(user.to_string());
+    if !dir.exists() {
+        fs::create_dir_all(dir.as_path())?;
+    }
+    if ::is_running_as_docker_container() {
+        cmd!("chown", "dev", &dir).run()?;
+    }
 
-    path.push(&cwd);
-    path.push(get_snippets_directory());
-    path.push(author.id.to_string());
-    fs::create_dir_all(path.as_path())?;
+    Ok(dir)
+}
+
+fn save_code(code: &str, author: UserId, ext: &str) -> Result<PathBuf, Error> {
+    let mut path = get_snippets_directory_for_user(author)?;
+
+    lock_directory(&path);
 
     loop {
         path.push(get_random_filename(ext));
@@ -307,13 +371,12 @@ pub fn save_code(code: &str, author: &serenity::model::user::User, ext: &str) ->
 
     if ::is_running_as_docker_container() {
         let _ = cmd!("chown", "dev", path.as_path()).run();
-        let _ = cmd!("chown", "dev", path.parent().unwrap()).run();
     }
 
     Ok(path)
 }
 
-pub fn run_command(path: &PathBuf, cmd: Expression, timeout: u64) -> Result<CommandResult, Error> {
+fn run_command(path: &PathBuf, cmd: Expression, timeout: u64) -> Result<CommandResult, Error> {
     let dir = path.parent().unwrap();
     let cmd = cmd.dir(dir).env_remove("RUST_LOG").unchecked();
     let res = run_with_timeout(timeout, cmd)?;

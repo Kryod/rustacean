@@ -65,8 +65,6 @@ impl LangManager {
         ], Arc::new(Box::new(Vb)));
         mngr.languages.insert(vec!["java".into()], Arc::new(Box::new(Java)));
 
-        mngr.check_compilers_interpreters();
-
         mngr
     }
 
@@ -105,7 +103,7 @@ impl LangManager {
         &self.languages
     }
 
-    fn check_compilers_interpreters(&mut self) {
+    pub fn check_available_languages(&mut self) {
         info!("Checking available languages...");
         for (_lang_codes, boxed_lang) in self.languages.iter() {
             let command = boxed_lang.check_compiler_or_interpreter().stdout_null().stderr_null();
@@ -125,5 +123,9 @@ impl LangManager {
                 }
             };
         }
+    }
+
+    pub fn set_language_available(&mut self, lang: String, availability: bool) {
+        self.availability.insert(lang, availability);
     }
 }

@@ -4,3 +4,4 @@ pub mod git;
 pub mod ban;
 pub mod logs;
 pub mod languages;
+pub mod help;
