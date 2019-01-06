@@ -11,6 +11,7 @@ extern crate duct;
 extern crate regex;
 extern crate typemap;
 extern crate chrono;
+extern crate reqwest;
 
 pub mod commands;
 pub mod lang_manager;
@@ -28,14 +29,17 @@ use serenity::model::prelude::{ Ready, Message, ResumedEvent };
 use serenity::prelude::{ Client, Context, EventHandler };
 use serenity::model::permissions::Permissions;
 use serenity::http;
+use serenity::model::channel::Embed;
 use diesel::SqliteConnection;
 use diesel::r2d2::{ ConnectionManager, Pool };
 use typemap::Key;
+use std::io::{ Error, ErrorKind };
 
 use std::io::Read;
 use std::collections::{ HashSet, HashMap };
 use std::str::FromStr;
 use std::sync::{ Arc, Mutex };
+use std::process::Command;
 
 // A container type is created for inserting into the Client's `data`, which
 // allows for data to be accessible across all events and framework commands, or
@@ -55,6 +59,10 @@ struct Settings {
     pub log_level_file: String,
     pub db_connection_pool_size: u32,
     pub bot_owners: Vec<serenity::model::prelude::UserId>,
+    pub webhook_id: u64,
+    pub webhook_token: String,
+    pub webhook_frequency: u64,
+    pub webhook_role: String,
 }
 
 impl Key for Settings {
@@ -69,6 +77,14 @@ impl EventHandler for Handler {
         info!("Open this link in a web browser to invite {} to a Discord server:\r\nhttps://discordapp.com/oauth2/authorize?client_id={}&scope=bot&permissions=378944", ready.user.name, ready.user.id);
 
         let ctx = Arc::new(Mutex::new(ctx));
+
+        let (id, token, freq, role) = {
+            let ctx_lock = ctx.lock().unwrap();
+            let data = ctx_lock.data.lock();
+            let settings = data.get::<Settings>().unwrap().lock().unwrap();
+            (settings.webhook_id.clone(), settings.webhook_token.clone(), settings.webhook_frequency.clone(), settings.webhook_role.clone())
+        };
+
         std::thread::spawn(move || {
             let dbl_api_key = {
                 let ctx_lock = ctx.lock().unwrap();
@@ -98,6 +114,77 @@ impl EventHandler for Handler {
                     },
                     Err(e) => error!("Error while retrieving guild count: {}", e),
                 };
+            }
+        });
+
+        
+        std::thread::spawn(move || {
+            // Periodic tests to see if bot is broken
+            let test_min_age = std::time::Duration::from_secs(60 * freq);
+
+            loop {
+                info!("Running test command!");
+
+                //let res = cmd!("cargo test").stdout_capture().stderr_capture().run();
+                
+                let output = Command::new("cargo")
+                    .arg("test")
+                    .output()
+                    .expect("failed to execute process");
+
+                info!("Ran test command!");
+
+                let mut stdout = ::std::str::from_utf8(&output.stdout)
+                    .map_err(| e | Error::new(ErrorKind::InvalidData, e))
+                    .unwrap()
+                    .to_owned();
+                let mut stderr = ::std::str::from_utf8(&output.stderr)
+                    .map_err(| e | Error::new(ErrorKind::InvalidData, e))
+                    .unwrap()
+                    .to_owned();
+
+                stdout.truncate(2000);
+                stderr.truncate(1000);
+                let webhook = http::get_webhook_with_token(id, &token)
+                    .expect("valid webhook");
+
+                let exit_code = output.status.code();
+                let (embed, ping) = match exit_code {
+                    Some(0) => {
+                        info!("Tests passed successfully!");
+                        (Embed::fake(|e| e
+                            .title("Rustacean is doing fine")
+                            .description(&stdout)), false)
+
+                    },
+                    Some(_) => {
+                        warn!("An error occured!");
+                        (Embed::fake(|e| e
+                            .title("Rustacean encountered an issue")
+                            .description(&stdout)
+                            .field("Error", &stderr, true)), true)
+                    },
+                    None => {
+                        error!("An error occured!");
+                        (Embed::fake(|e| e
+                            .title("Rustacean encountered an error")
+                            .description(&stdout)
+                            .field("Error", &stderr, true)), true)
+                    },
+                };
+
+                let content = match ping {
+                    true => format!("There is a problem <@&{}> !", role),
+                    false => "Everything is fine.".into()
+                };
+                
+                let _ = webhook.execute(false, |w| w
+                            .content(&content)
+                            .username("Rustacean Alert")
+                            .embeds(vec![embed]))
+                            .expect("Error executing");
+
+                std::thread::sleep(test_min_age);
             }
         });
 

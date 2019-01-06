@@ -11,3 +11,10 @@ log_level_term = "Info"
 log_level_file = "Debug"
 
 db_connection_pool_size = 8
+
+# If you want to be pinged about the status of the bot, fill the following fields.
+# webhook exemple : https://discordapp.com/api/webhooks/webhook_id/webhook_token
+webhook_id = 0 
+webhook_token = "token"
+webhook_frequency = 10000000 # In minutes
+webhook_role = 0 # Id of the role you want to ping when something went wrong with the bot

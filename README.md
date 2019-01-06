@@ -1,4 +1,6 @@
-[![Build Status](https://travis-ci.org/Kryod/rustacean.svg?branch=master)](https://travis-ci.org/Kryod/rustacean)
+[![Build Status](https://travis-ci.org/Kryod/rustacean.svg?branch=master)](https://travis-ci.org/Kryod/rustacean) [![rust 1.30+ badge]][rust 1.30+ link] [![guild-badge][]][guild]
+
+
 
 [![Discord Bots](https://discordbots.org/api/widget/509051376655925258.svg)](https://discordbots.org/bot/509051376655925258)
 
@@ -71,3 +73,8 @@ When the program starts running, an invite link will be printed out to add the b
 ### Docker
 
 You can also [run Rustacean as a Docker container](readme/docker.md).
+
+[guild]: https://discord.gg/2qjtv2H
+[guild-badge]: https://img.shields.io/discord/509055716305141780.svg?style=flat-square&colorB=7289DA
+[rust 1.30+ badge]: https://img.shields.io/badge/rust-1.30+-93450a.svg?style=flat-square
+[rust 1.30+ link]: https://blog.rust-lang.org/2018/10/25/Rust-1.30.0.html
