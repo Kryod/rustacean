@@ -59,10 +59,10 @@ struct Settings {
     pub log_level_file: String,
     pub db_connection_pool_size: u32,
     pub bot_owners: Vec<serenity::model::prelude::UserId>,
-    pub webhook_id: u64,
-    pub webhook_token: String,
-    pub webhook_frequency: u64,
-    pub webhook_role: String,
+    pub webhook_id: Option<u64>,
+    pub webhook_token: Option<String>,
+    pub webhook_frequency: Option<u64>,
+    pub webhook_role: Option<String>,
 }
 
 impl Key for Settings {
@@ -78,20 +78,20 @@ impl EventHandler for Handler {
 
         let ctx = Arc::new(Mutex::new(ctx));
 
-        let (id, token, freq, role) = {
+        let (dbl_api_key, webhook_id, webhook_token, webhook_freq, webhook_role) = {
             let ctx_lock = ctx.lock().unwrap();
             let data = ctx_lock.data.lock();
             let settings = data.get::<Settings>().unwrap().lock().unwrap();
-            (settings.webhook_id.clone(), settings.webhook_token.clone(), settings.webhook_frequency.clone(), settings.webhook_role.clone())
+            (
+                settings.dbl_api_key.clone(),
+                settings.webhook_id.clone(),
+                settings.webhook_token.clone(),
+                settings.webhook_frequency.clone(),
+                settings.webhook_role.clone(),
+            )
         };
 
         std::thread::spawn(move || {
-            let dbl_api_key = {
-                let ctx_lock = ctx.lock().unwrap();
-                let data = ctx_lock.data.lock();
-                let settings = data.get::<Settings>().unwrap().lock().unwrap();
-                settings.dbl_api_key.clone()
-            };
             // Game presence status rotation
             loop {
                 set_game_presence_help(&ctx.lock().unwrap());
@@ -119,18 +119,26 @@ impl EventHandler for Handler {
 
         
         std::thread::spawn(move || {
-            // Periodic tests to see if bot is broken
-            let test_min_age = std::time::Duration::from_secs(60 * freq);
+            // Periodic tests to check if bot is broken
+            if webhook_id.is_none() || webhook_token.is_none() || webhook_freq.is_none() || webhook_role.is_none() {
+                return;
+            }
+            let (webhook_id, webhook_token, webhook_freq, webhook_role) = (
+                webhook_id.unwrap(),
+                webhook_token.unwrap(),
+                webhook_freq.unwrap(),
+                webhook_role.unwrap(),
+            );
+
+            let test_freq = std::time::Duration::from_secs(60 * webhook_freq);
 
             loop {
                 info!("Running test command!");
 
-                //let res = cmd!("cargo test").stdout_capture().stderr_capture().run();
-                
                 let output = Command::new("cargo")
                     .arg("test")
                     .output()
-                    .expect("failed to execute process");
+                    .expect("Could not run cargo test");
 
                 info!("Ran test command!");
 
@@ -145,7 +153,7 @@ impl EventHandler for Handler {
 
                 stdout.truncate(2000);
                 stderr.truncate(1000);
-                let webhook = http::get_webhook_with_token(id, &token)
+                let webhook = http::get_webhook_with_token(webhook_id, &webhook_token)
                     .expect("valid webhook");
 
                 let exit_code = output.status.code();
@@ -174,7 +182,7 @@ impl EventHandler for Handler {
                 };
 
                 let content = match ping {
-                    true => format!("There is a problem <@&{}> !", role),
+                    true => format!("There is a problem <@&{}>!", webhook_role),
                     false => "Everything is fine.".into()
                 };
                 
@@ -184,7 +192,7 @@ impl EventHandler for Handler {
                             .embeds(vec![embed]))
                             .expect("Error executing");
 
-                std::thread::sleep(test_min_age);
+                std::thread::sleep(test_freq);
             }
         });
 
