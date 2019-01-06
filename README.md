@@ -76,5 +76,5 @@ You can also [run Rustacean as a Docker container](readme/docker.md).
 
 [guild]: https://discord.gg/2qjtv2H
 [guild-badge]: https://img.shields.io/discord/509055716305141780.svg?style=flat-square&colorB=7289DA
-[rust 1.30+ badge]: https://img.shields.io/badge/rust-1.30.0+-93450a.svg?style=flat-square
-[rust 1.30+ link]: https://blog.rust-lang.org/2018/10/25/Rust-1.30.html
+[rust 1.30+ badge]: https://img.shields.io/badge/rust-1.30+-93450a.svg?style=flat-square
+[rust 1.30+ link]: https://blog.rust-lang.org/2018/10/25/Rust-1.30.0.html
