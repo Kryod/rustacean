@@ -70,7 +70,9 @@ fn lock_directory(path: &PathBuf) {
     loop {
         // Make sure that the parent directory exists, otherwise creating the lock will fail
         let parent = lock_file.parent().expect("Could not get lock file parent directory");
-        fs::create_dir_all(parent).expect("Could not create lock file parent directory");
+        if let Err(e) = fs::create_dir_all(parent) {
+            warn!("Could not create lock file parent directory: {}", e);
+        };
         if ::is_running_as_docker_container() {
             let _ = cmd!("chown", "dev", &parent).run();
         }

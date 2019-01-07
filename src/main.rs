@@ -402,6 +402,9 @@ fn main() {
                 .cmd(commands::git::git)
                 .batch_known_as(["github", "repository", "repo"].iter())
                 .desc("Get a link to Rustacean's GitHub repository."))
+            .command("support", |c| c
+                .cmd(commands::support::support)
+                .desc("Get a link to Rustacean's support Discord server."))
             .command("invite", |c| c
                 .cmd(commands::invite::invite)
                 .desc("Get an invite link to add Rustacean to other servers."))

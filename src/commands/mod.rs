@@ -6,3 +6,4 @@ pub mod unban;
 pub mod logs;
 pub mod languages;
 pub mod invite;
+pub mod support;
