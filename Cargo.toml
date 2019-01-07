@@ -6,7 +6,7 @@ authors = ["Yohann Jerrain <y.jerrain@gmail.com>"]
 [dependencies]
 simplelog = "0.5.3"
 log = "0.4.6"
-rand = "0.6.1"
+rand = "0.6.3"
 duct = "0.11.1"
 regex = "1.1.0"
 toml = "0.4.10"

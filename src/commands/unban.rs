@@ -9,7 +9,7 @@ command!(unban(ctx, msg, args) {
 
     let (discord_user, user) = match user {
         Ok(discord_user) => {
-            let user = ::models::User::get(&format!("{}", discord_user.id), &db);
+            let user = ::models::User::get(discord_user.id, &db);
             (discord_user, user)
         },
         Err(Parse(e)) => {

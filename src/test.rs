@@ -12,7 +12,7 @@ fn test_lang(code: &str, lang: &str, ret_code: i32, ignore_compil_stdout: bool, 
     let lang = ::commands::exec::get_lang(&lang_manager, lang).unwrap();
     let res = ::commands::exec::run_code(code.into(), lang, user);
     ::commands::exec::cleanup_user_snippet_directory(user).unwrap();
-    let (compilation, execution, _) = res.unwrap();
+    let (compilation, execution, _, _) = res.unwrap();
 
     if compilation.timed_out {
         // Compilation timed out

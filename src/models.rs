@@ -26,6 +26,16 @@ pub struct LangStat {
     snippets_executed: i32,
 }
 
+#[derive(Queryable)]
+#[allow(dead_code)]
+pub struct Snippet {
+    id:       i32,
+    user:     i32,
+    code:     String,
+    guild:    Option<String>,
+    run_time: String,
+}
+
 impl User {
     pub fn get_id(&self) -> i32 {
         self.id
@@ -35,11 +45,13 @@ impl User {
         self.discord_id.parse::<u64>().expect("Could not parse UserId from string").into()
     }
 
-    pub fn get(discord_user_id: &str, db: &::DbPoolType) -> Self {
+    pub fn get(discord_user_id: UserId, db: &::DbPoolType) -> Self {
         use schema::user::dsl::*;
 
+        let discord_user_id = discord_user_id.to_string();
+
         let db = db.get().unwrap();
-        match user.filter(discord_id.eq(discord_user_id)).first::<User>(&db) {
+        match user.filter(discord_id.eq(&discord_user_id)).first::<User>(&db) {
             Ok(lang) => lang,
             Err(_) => {
                 let r = diesel::insert_into(user).values(
@@ -249,5 +261,28 @@ impl LangStat {
         let _ = diesel::update(lang_stat.filter(id.eq(self.id))).set((
             snippets_executed.eq(self.snippets_executed),
         )).execute(&db);
+    }
+}
+
+impl Snippet {
+    pub fn save(contents: String, lang: &str, author: UserId, msg_guild: Option<GuildId>, db: &::DbPoolType) -> Result<usize, diesel::result::Error> {
+        let author = User::get(author, &db);
+
+        let msg_guild = match msg_guild {
+            Some(guild_id) => Some(guild_id.to_string()),
+            None => None,
+        };
+
+        let epoch = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs().to_string();
+
+        let db = db.get().unwrap();
+        use schema::snippet::dsl::*;
+        diesel::insert_into(snippet).values((
+            user.eq(author.get_id()),
+            code.eq(contents),
+            language.eq(lang),
+            guild.eq(msg_guild),
+            run_time.eq(epoch),
+        )).execute(&db)
     }
 }

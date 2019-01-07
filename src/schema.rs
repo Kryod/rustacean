@@ -16,6 +16,17 @@ table! {
 }
 
 table! {
+    snippet (id) {
+        id -> Integer,
+        user -> Integer,
+        code -> Text,
+        language -> Text,
+        guild -> Nullable<Text>,
+        run_time -> Text,
+    }
+}
+
+table! {
     user (id) {
         id -> Integer,
         discord_id -> Text,
@@ -23,9 +34,11 @@ table! {
 }
 
 joinable!(ban -> user (user));
+joinable!(snippet -> user (user));
 
 allow_tables_to_appear_in_same_query!(
     ban,
     lang_stat,
+    snippet,
     user,
 );

@@ -142,7 +142,7 @@ pub fn get_lang(lang_manager: &LangManager, lang_code: &str) -> Result<BoxedLang
     }
 }
 
-pub fn run_code(mut code: String, lang: BoxedLang, author: UserId) -> Result<(CommandResult, CommandResult, String), Error> {
+pub fn run_code(mut code: String, lang: BoxedLang, author: UserId) -> Result<(CommandResult, CommandResult, String, String), Error> {
     let src_path = match save_code(&code, author, &lang.get_source_file_ext()) {
         Ok(path) => path,
         Err(e) => {
@@ -152,12 +152,13 @@ pub fn run_code(mut code: String, lang: BoxedLang, author: UserId) -> Result<(Co
     info!("Saving {} code in {}...", lang.get_lang_name(), src_path.to_str().unwrap());
     code = pre_process_code(code);
     if let Some(modified) = lang.pre_process_code(&code, &src_path) {
-        match fs::write(src_path.as_path(), modified) {
+        match fs::write(src_path.as_path(), &modified) {
             Ok(_) => {},
             Err(e) => {
                 return Err(Error::new(ErrorKind::Other, format!("An error occurred: {}", e)));
             },
         };
+        code = modified;
     }
 
     let out_path = lang.get_out_path(&src_path);
@@ -192,7 +193,7 @@ pub fn run_code(mut code: String, lang: BoxedLang, author: UserId) -> Result<(Co
         }
     };
 
-    Ok((compilation, execution, lang.get_lang_name()))
+    Ok((compilation, execution, code, lang.get_lang_name()))
 }
 
 command!(exec(ctx, msg, _args) {
@@ -242,7 +243,15 @@ command!(exec(ctx, msg, _args) {
             }
         };
         match run_code(code, lang, msg.author.id) {
-            Ok((c, e, l)) => (c, e, l),
+            Ok((c, e, processed_code, l)) => {
+                let data = ctx.data.lock();
+                let db = data.get::<::DbPool>().unwrap();
+                match ::models::Snippet::save(processed_code, &l, msg.author.id, msg.guild_id, db) {
+                    Ok(_) => {},
+                    Err(e) => warn!("Could not save snippet to db: {}", e),
+                };
+                (c, e, l)
+            },
             Err(e) => {
                 let _ = msg.reply(&e.to_string());
                 return Ok(());
