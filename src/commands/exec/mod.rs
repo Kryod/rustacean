@@ -64,6 +64,7 @@ pub struct CommandResult {
     pub timed_out: bool,
 }
 
+/// Function will put a .lock on a folder, preventing multiple actions on same folder. 
 fn lock_directory(path: &PathBuf) {
     let mut lock_file = path.clone();
     lock_file.push(".lock");
