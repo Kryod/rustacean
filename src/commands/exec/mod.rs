@@ -245,14 +245,17 @@ command!(exec(ctx, msg, _args) {
                 return Ok(());
             }
         };
+
+        {
+            let data = ctx.data.lock();
+            let db = data.get::<::DbPool>().unwrap();
+            match ::models::Snippet::save(code.clone(), &lang.get_lang_name(), msg.author.id, msg.guild_id, db) {
+                Ok(_) => {},
+                Err(e) => warn!("Could not save snippet to db: {}", e),
+            };
+        }
         match run_code(code, lang, msg.author.id) {
-            Ok((c, e, processed_code, l)) => {
-                let data = ctx.data.lock();
-                let db = data.get::<::DbPool>().unwrap();
-                match ::models::Snippet::save(processed_code, &l, msg.author.id, msg.guild_id, db) {
-                    Ok(_) => {},
-                    Err(e) => warn!("Could not save snippet to db: {}", e),
-                };
+            Ok((c, e, _processed_code, l)) => {
                 (c, e, l)
             },
             Err(e) => {
