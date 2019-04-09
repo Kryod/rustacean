@@ -76,6 +76,18 @@ impl EventHandler for Handler {
         info!("Connected as {}", ready.user.name);
         info!("Open this link in a web browser to invite {} to a Discord server:\r\nhttps://discordapp.com/oauth2/authorize?client_id={}&scope=bot&permissions=378944", ready.user.name, ready.user.id);
 
+        if let Some(shard) = ready.shard {
+            // Note that array index 0 is 0-indexed, while index 1 is 1-indexed.
+            //
+            // This may seem unintuitive, but it models Discord's behaviour.
+            println!(
+                "{} is connected on shard {}/{}!",
+                ready.user.name,
+                shard[0],
+                shard[1],
+            );
+        }
+
         let ctx = Arc::new(Mutex::new(ctx));
 
         let (dbl_api_key, webhook_id, webhook_token, webhook_freq, webhook_role) = {
@@ -228,8 +240,10 @@ impl EventHandler for Handler {
                             for file in snippet_files {
                                 let file = file.unwrap().path();
                                 let metadata = std::fs::metadata(&file).unwrap();
-                                if metadata.is_file() && metadata.created().unwrap().elapsed().unwrap() >= cleanup_min_age {
-                                    let _ = std::fs::remove_file(file);
+                                if let Ok(date) =  metadata.created() {
+                                    if metadata.is_file() && date.elapsed().unwrap() >= cleanup_min_age {
+                                        let _ = std::fs::remove_file(file);
+                                    }
                                 }
                             }
                         }
@@ -355,6 +369,26 @@ fn main() {
         data.insert::<Bans>(models::Ban::get_bans(&pool));
     }
 
+    let shard_manager = client.shard_manager.clone();
+
+    std::thread::spawn(move || {
+        loop {
+            std::thread::sleep(std::time::Duration::from_secs(30));
+
+            let lock = shard_manager.lock();
+            let shard_runners = lock.runners.lock();
+
+            for (id, runner) in shard_runners.iter() {
+                println!(
+                    "Shard ID {} is {} with a latency of {:?}",
+                    id,
+                    runner.stage,
+                    runner.latency,
+                );
+            }
+        }
+    });
+
     client.with_framework(StandardFramework::new()
         .configure(|c| c
             .owners(owners)
@@ -449,7 +483,7 @@ fn main() {
         )
     );
 
-    if let Err(why) = client.start() {
+    if let Err(why) = client.start_shards(4) {
         error!("Client error: {:?}", why);
     }
 }
