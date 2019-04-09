@@ -152,6 +152,7 @@ impl EventHandler for Handler {
 
                 let output = Command::new("cargo")
                     .arg("test")
+                    .arg("--release")
                     .output();
                 let output = match output {
                     Ok(out) => out,
