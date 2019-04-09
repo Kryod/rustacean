@@ -52,6 +52,10 @@ impl LangManager {
             "python".into(),
         ], Arc::new(Box::new(Python)));
         mngr.languages.insert(vec![
+            "rb".into(),
+            "ruby".into(),
+        ], Arc::new(Box::new(Ruby)));
+        mngr.languages.insert(vec![
             "js".into(),
             "javascript".into(),
         ], Arc::new(Box::new(JavaScript)));

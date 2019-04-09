@@ -15,7 +15,8 @@ RUN apt-get update -y && apt-get install -y libssl-dev \
     lua-socket \
     lua-sec \
     openjdk-8-jdk \
-    nasm 
+    nasm \
+    ruby-full
 
 RUN cargo install diesel_cli --no-default-features --features "sqlite"
 

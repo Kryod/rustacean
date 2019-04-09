@@ -41,6 +41,9 @@ pub use self::java::Java;
 mod lua;
 pub use self::lua::Lua;
 
+mod ruby;
+pub use self::ruby::Ruby;
+
 mod shell;
 pub use self::shell::Shell;
 

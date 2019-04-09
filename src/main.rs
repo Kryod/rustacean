@@ -370,26 +370,6 @@ fn main() {
         data.insert::<Bans>(models::Ban::get_bans(&pool));
     }
 
-    let shard_manager = client.shard_manager.clone();
-
-    std::thread::spawn(move || {
-        loop {
-            std::thread::sleep(std::time::Duration::from_secs(30));
-
-            let lock = shard_manager.lock();
-            let shard_runners = lock.runners.lock();
-
-            for (id, runner) in shard_runners.iter() {
-                println!(
-                    "Shard ID {} is {} with a latency of {:?}",
-                    id,
-                    runner.stage,
-                    runner.latency,
-                );
-            }
-        }
-    });
-
     client.with_framework(StandardFramework::new()
         .configure(|c| c
             .owners(owners)
@@ -483,6 +463,26 @@ fn main() {
                 .owners_only(true))
         )
     );
+
+    let shard_manager = client.shard_manager.clone();
+
+    std::thread::spawn(move || {
+        loop {
+            std::thread::sleep(std::time::Duration::from_secs(30));
+
+            let lock = shard_manager.lock();
+            let shard_runners = lock.runners.lock();
+
+            for (id, runner) in shard_runners.iter() {
+                println!(
+                    "Shard ID {} is {} with a latency of {:?}",
+                    id,
+                    runner.stage,
+                    runner.latency,
+                );
+            }
+        }
+    });
 
     if let Err(why) = client.start_shards(4) {
         error!("Client error: {:?}", why);
