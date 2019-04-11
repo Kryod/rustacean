@@ -2,6 +2,7 @@ use LangManager;
 
 #[allow(dead_code)]
 fn test_lang(code: &str, lang: &str, ret_code: i32, ignore_compil_stdout: bool, ret_str: &str) {
+    println!("testing lang");
     let mut lang_manager = LangManager::new();
     let languages = lang_manager.get_languages().clone();
     for (_codes, boxed_lang) in languages {
@@ -70,6 +71,11 @@ fn test_cpp() {
 #[test]
 fn test_python() {
     test_lang("print('test', end='')", "python", 0, false, "test");
+}
+
+#[test]
+fn test_ruby() {
+    test_lang("print 'test'", "ruby", 0, false, "test");
 }
 
 #[test]

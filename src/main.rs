@@ -435,6 +435,14 @@ fn main() {
                 .cmd(commands::languages::languages)
                 .batch_known_as(["langs", "language", "lang"].iter())
                 .desc(&format!("Get a list of available programming languages for the `{}exec` command.", command_prefix)))
+            .command("versions", |c| c
+                .cmd(commands::versions::versions)
+                .batch_known_as(["version", "versions", "ver"].iter())
+                .desc(&format!("Get a list of versions for the available programming languages for the `{}exec` command.", command_prefix)))
+            .command("stats", |c| c
+                .cmd(commands::stats::stats)
+                .batch_known_as(["stats", "stat"].iter())
+                .desc(&format!("Gets statistics about usage of languages for the `{}exec` command.", command_prefix)))
         )
         .group(":star: Administrator", |g| g
             .command("ban", |c| c

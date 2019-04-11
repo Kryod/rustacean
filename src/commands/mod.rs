@@ -7,3 +7,5 @@ pub mod logs;
 pub mod languages;
 pub mod invite;
 pub mod support;
+pub mod versions;
+pub mod stats;
