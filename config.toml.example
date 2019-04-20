@@ -13,7 +13,7 @@ log_level_file = "Debug"
 db_connection_pool_size = 8
 
 # If you want to be pinged about the status of the bot, uncomment and fill the following fields.
-# webhook exemple : https://discordapp.com/api/webhooks/webhook_id/webhook_token
+# webhook example: https://discordapp.com/api/webhooks/webhook_id/webhook_token
 #webhook_id = 123456789
 #webhook_token = "AbC123xYz"
 #webhook_frequency = 60 # In minutes
