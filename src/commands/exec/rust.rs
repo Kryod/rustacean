@@ -7,6 +7,10 @@ use duct::{ cmd, Expression };
 pub struct Rust;
 
 impl Language for Rust {
+    fn get_image_name(&self) -> String {
+        "gcc".into()
+    }
+    
     fn get_lang_name(&self) -> String {
         "Rust".into()
     }
@@ -27,8 +31,8 @@ impl Language for Rust {
         None
     }
 
-    fn get_compiler_command(&self, src_path: &PathBuf, exe_path: &PathBuf) -> Option<Expression> {
-        Some(cmd!("rustc", src_path, "-o", exe_path))
+    fn get_compiler_command(&self, src_path: &PathBuf, exe_path: &PathBuf) -> Option<String> {
+        Some(format!("rustc {} -o {}", src_path.to_str().unwrap(), exe_path.to_str().unwrap()))
     }
 
     fn check_compiler_or_interpreter(&self) -> Expression {

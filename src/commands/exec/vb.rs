@@ -17,6 +17,10 @@ impl Vb {
 }
 
 impl Language for Vb {
+    fn get_image_name(&self) -> String {
+        "gcc".into()
+    }
+    
     fn get_lang_name(&self) -> String {
         "VB.Net".into()
     }
@@ -44,17 +48,17 @@ End Module", code);
         None
     }
 
-    fn get_compiler_command(&self, src_path: &PathBuf, exe_path: &PathBuf) -> Option<Expression> {
+    fn get_compiler_command(&self, src_path: &PathBuf, exe_path: &PathBuf) -> Option<String> {
         let compiler = self.get_compiler();
         let out = format!("/out:{}", exe_path.to_str().unwrap());
-        Some(cmd!(compiler, out, "/target:winexe", "/nologo", "/quiet", src_path))
+        Some(format!("{} {} /target:winexe /nologo /quiet {}", compiler, out, src_path.to_str().unwrap()))
     }
 
-    fn get_execution_command(&self, path: &PathBuf) -> Expression {
+    fn get_execution_command(&self, path: &PathBuf) -> String {
         if cfg!(windows) {
-            cmd!(path)
+            String::from(path.to_str().unwrap())
         } else {
-            cmd!("mono", path)
+            format!("mono {}", path.to_str().unwrap())
         }
     }
 

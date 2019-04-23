@@ -13,6 +13,11 @@ impl Asmx64 {
 }
 
 impl Language for Asmx64 {
+    
+    fn get_image_name(&self) -> String {
+        "gcc".into()
+    }
+
     fn get_lang_name(&self) -> String {
         "Asm 64 bit".into()
     }
@@ -21,9 +26,11 @@ impl Language for Asmx64 {
         ".asm".into()
     }
 
-    fn get_compiler_command(&self, src_path: &PathBuf, exe_path: &PathBuf) -> Option<Expression> {
-        Some(cmd!("nasm", "-f", "elf64", src_path)
-            .then(cmd!("ld", format!("{}.o", self.get_file_name(src_path)), "-o", exe_path)))
+    fn get_compiler_command(&self, src_path: &PathBuf, exe_path: &PathBuf) -> Option<String> {
+
+        Some(format!("nasm -f elf32 {} && ld {}.o -o {}", src_path.to_str().unwrap(), self.get_file_name(src_path), exe_path.to_str().unwrap()))
+        //Some(cmd!("nasm", "-f", "elf64", src_path)
+        //    .then(cmd!("ld", format!("{}.o", self.get_file_name(src_path)), "-o", exe_path)))
     }
 
     fn check_compiler_or_interpreter(&self) -> Expression {

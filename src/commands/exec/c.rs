@@ -7,6 +7,11 @@ use duct::{ cmd, Expression };
 pub struct C;
 
 impl Language for C {
+
+    fn get_image_name(&self) -> String {
+        "gcc".into()
+    }
+
     fn get_lang_name(&self) -> String {
         "C".into()
     }
@@ -27,8 +32,8 @@ impl Language for C {
         None
     }
 
-    fn get_compiler_command(&self, src_path: &PathBuf, exe_path: &PathBuf) -> Option<Expression> {
-        Some(cmd!("gcc", src_path, "-o", exe_path))
+    fn get_compiler_command(&self, src_path: &PathBuf, exe_path: &PathBuf) -> Option<String> {
+        Some(format!("gcc {} -o {}", src_path.to_str().unwrap(), exe_path.to_str().unwrap()))
     }
 
     fn check_compiler_or_interpreter(&self) -> Expression {

@@ -166,9 +166,7 @@ pub fn run_code(mut code: String, lang: BoxedLang, author: UserId) -> Result<(Co
         };
         code = modified;
     }
-
-    let out_path = lang.get_out_path(&src_path);
-    let compilation = match lang.get_compiler_command(&src_path, &out_path) {
+    /*let compilation = match lang.get_compiler_command(&src_path, &out_path) {
         Some(command) => {
             info!("Compiling {} code", lang.get_lang_name());
             run_command(&src_path, command, 30)
@@ -180,9 +178,9 @@ pub fn run_code(mut code: String, lang: BoxedLang, author: UserId) -> Result<(Co
         Err(e) => {
             return Err(Error::new(ErrorKind::Other, format!("An error occurred while compiling code snippet: {}", e)));
         },
-    };
+    };*/
 
-    let execution = match compilation.exit_code {
+    /*let execution = match compilation.exit_code {
         Some(code) if code != 0 => {
             // Return a default value if compilation failed
             CommandResult::default()
@@ -190,14 +188,31 @@ pub fn run_code(mut code: String, lang: BoxedLang, author: UserId) -> Result<(Co
         _ => {
             // Compilation succeeded, run the snippet
             info!("Executing {} code", lang.get_lang_name());
-            match run_command(&src_path, lang.get_execution_command(&out_path), 10) {
+            match run_command(&src_path, lang.get_compiler_command(&src_path, &out_path), lang.get_execution_command(&out_path), 10) {
                 Ok(res) => res,
                 Err(e) => {
                     return Err(Error::new(ErrorKind::Other, format!("An error occurred while running code snippet: {}", e)));
                 }
             }
         }
+    };*/
+
+    //let local_src_path = src_path.clone();
+    let filename = src_path.file_name().unwrap().to_str().unwrap();
+    let mut src_path = PathBuf::from("/code");
+    src_path.push(filename);
+    let out_path = lang.get_out_path(&src_path);
+    let image = lang.get_image_name().to_owned();
+
+    info!("Executing {} code", lang.get_lang_name());
+    let execution = match run_command(&src_path, author.to_string(), lang.get_compiler_command(&src_path, &out_path), lang.get_execution_command(&out_path), 10, &image) {
+        Ok(res) => res,
+        Err(e) => {
+            return Err(Error::new(ErrorKind::Other, format!("An error occurred while running code snippet: {}", e)));
+        }
     };
+
+    let compilation = CommandResult::default();
 
     Ok((compilation, execution, code, lang.get_lang_name()))
 }
@@ -394,26 +409,26 @@ fn save_code(code: &str, author: UserId, ext: &str) -> Result<PathBuf, Error> {
     Ok(path)
 }
 
-fn run_command(path: &PathBuf, cmd: Expression, timeout: u64) -> Result<CommandResult, Error> {
-    let dir = path.parent().unwrap();
-    let cmd = cmd.dir(dir).env_remove("RUST_LOG").unchecked();
-    let res = run_with_timeout(timeout, cmd)?;
+fn run_command(path: &PathBuf, userid: String, cmd_comp: Option<String>, cmd_exec: String, timeout: u64, image: &str) -> Result<CommandResult, Error> {
+    let res = run_with_timeout(timeout, userid, cmd_comp, cmd_exec, image)?;
 
     Ok(res)
 }
 
-#[cfg_attr(not(unix), allow(unused_mut))]
-fn run_with_timeout(timeout: u64, mut cmd: ::duct::Expression) -> Result<CommandResult, Error> {
-    #[cfg(unix)]
-    {
-        if ::is_running_as_docker_container() {
-            use std::os::unix::process::CommandExt;
-            cmd = cmd.before_spawn(|cmd| {
-                cmd.uid(1000);
-                Ok(())
-            });
-        }
-    }
+#[allow(unused_mut)]
+fn run_with_timeout(timeout: u64, userid: String, mut cmd_comp: Option<String>, mut cmd_exec: String, image: &str) -> Result<CommandResult, Error> {
+    
+    let compilation = match cmd_comp {
+        Some(cmd) => cmd,
+        None => String::from(""),
+    };
+    //docker run -v snippets:/home:ro --network none gcc /bin/bash -c "mkdir /code && cp -R /home/123456/* /code && cd /code && gcc test.c -o test && ./test"
+
+    let cmd = cmd!("docker", "run", "-v", "snippets:/home:ro",
+    "--network", "none", image,
+    "/bin/bash", "-c",
+    format!("\\\"mkdir /code && cp -R /home/{}/* /code && {} && {}\\\"", userid, compilation, cmd_exec));
+
     let child = cmd
         .stdout_capture()
         .stderr_capture()

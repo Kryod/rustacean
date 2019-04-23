@@ -7,6 +7,11 @@ use duct::{ cmd, Expression };
 pub struct Csharp;
 
 impl Language for Csharp {
+
+    fn get_image_name(&self) -> String {
+        "gcc".into()
+    }
+
     fn get_lang_name(&self) -> String {
         "C#".into()
     }
@@ -36,7 +41,7 @@ public class Program
         None
     }
 
-    fn get_compiler_command(&self, src_path: &PathBuf, exe_path: &PathBuf) -> Option<Expression> {
+    fn get_compiler_command(&self, src_path: &PathBuf, exe_path: &PathBuf) -> Option<String> {
         let compiler;
         let out;
         let target;
@@ -52,14 +57,14 @@ public class Program
             target = "-target:winexe";
             nologo = "-nologo";
         }
-        Some(cmd!(compiler, out, target, nologo, src_path))
+        Some(format!("{} {} {} {} {}", compiler, out, target, nologo, src_path.to_str().unwrap()))
     }
 
-    fn get_execution_command(&self, path: &PathBuf) -> Expression {
+    fn get_execution_command(&self, path: &PathBuf) -> String {
         if cfg!(windows) {
-            cmd!(path)
+            String::from(path.to_str().unwrap())
         } else {
-            cmd!("mono", path)
+            format!("mono {}", path.to_str().unwrap())
         }
     }
 

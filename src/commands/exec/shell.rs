@@ -7,6 +7,10 @@ use duct::{ cmd, Expression };
 pub struct Shell;
 
 impl Language for Shell {
+    fn get_image_name(&self) -> String {
+        "gcc".into()
+    }
+    
     fn get_lang_name(&self) -> String {
         "Shell".into()
     }
@@ -15,8 +19,8 @@ impl Language for Shell {
         ".sh".into()
     }
 
-    fn get_execution_command(&self, path: &PathBuf) -> Expression {
-        cmd!("sh", path)    
+    fn get_execution_command(&self, path: &PathBuf) -> String {
+        format!("sh {}", path.to_str().unwrap())    
     }
 
     fn check_compiler_or_interpreter(&self) -> Expression {

@@ -7,6 +7,10 @@ use duct::{ cmd, Expression };
 pub struct Php;
 
 impl Language for Php {
+    fn get_image_name(&self) -> String {
+        "gcc".into()
+    }
+    
     fn get_lang_name(&self) -> String {
         "PHP".into()
     }
@@ -15,8 +19,8 @@ impl Language for Php {
         ".php".into()
     }
 
-    fn get_execution_command(&self, path: &PathBuf) -> Expression {
-        cmd!("php", path)
+    fn get_execution_command(&self, path: &PathBuf) -> String {
+        format!("php {}", path.to_str().unwrap())
     }
 
     fn check_compiler_or_interpreter(&self) -> Expression {
