@@ -8,7 +8,7 @@ pub struct Shell;
 
 impl Language for Shell {
     fn get_image_name(&self) -> String {
-        "gcc".into()
+        "rustacean-shell".into()
     }
     
     fn get_lang_name(&self) -> String {

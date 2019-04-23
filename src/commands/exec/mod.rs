@@ -419,7 +419,7 @@ fn run_command(path: &PathBuf, userid: String, cmd_comp: Option<String>, cmd_exe
 fn run_with_timeout(timeout: u64, userid: String, mut cmd_comp: Option<String>, mut cmd_exec: String, image: &str) -> Result<CommandResult, Error> {
     
     let compilation = match cmd_comp {
-        Some(cmd) => cmd,
+        Some(cmd) => format!(" && {}", cmd),
         None => String::from(""),
     };
     //docker run -v snippets:/home:ro --network none gcc /bin/bash -c "mkdir /code && cp -R /home/123456/* /code && cd /code && gcc test.c -o test && ./test"
@@ -427,7 +427,7 @@ fn run_with_timeout(timeout: u64, userid: String, mut cmd_comp: Option<String>, 
     let cmd = cmd!("docker", "run", "--rm", "-v", "snippets:/home:ro",
     "--network", "none", image,
     "/bin/bash", "-c",
-    format!("mkdir /code && cp -R /home/{}/* /code && {} && {}", userid, compilation, cmd_exec));
+    format!("mkdir /code && cp -R /home/{}/* /code{} && {}", userid, compilation, cmd_exec));
 
     //let res = cmd.stdout_capture().stderr_capture().run();
 

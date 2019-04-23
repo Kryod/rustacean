@@ -20,7 +20,7 @@ impl JavaScript {
 
 impl Language for JavaScript {
     fn get_image_name(&self) -> String {
-        "gcc".into()
+        "rustacean-javascript".into()
     }
 
     fn get_lang_name(&self) -> String {

@@ -14,11 +14,11 @@ impl Asmx86 {
 
 impl Language for Asmx86 {
     fn get_image_name(&self) -> String {
-        "gcc".into()
+        "rustacean-asm32".into()
     }
 
     fn get_lang_name(&self) -> String {
-        "Asm 32 bit".into()
+        "Asm32".into()
     }
 
     fn get_source_file_ext(&self) -> String {

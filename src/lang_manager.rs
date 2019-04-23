@@ -1,6 +1,7 @@
 use typemap::Key;
 use std::sync::{ Arc, Mutex };
 use std::collections::HashMap;
+use duct::cmd;
 
 use commands::exec::language::Language;
 use commands::exec::*;
@@ -110,10 +111,11 @@ impl LangManager {
     pub fn check_available_languages(&mut self) {
         info!("Checking available languages...");
         for (_lang_codes, boxed_lang) in self.languages.iter() {
-            let command = boxed_lang.check_compiler_or_interpreter().stdout_null().stderr_null();
+            //let command = boxed_lang.check_compiler_or_interpreter().stdout_null().stderr_null();
             let lang_name = boxed_lang.get_lang_name();
+            let low_lang_name = lang_name.to_lowercase();
             self.availability.insert(lang_name.clone(), false);
-            match command.run() {
+            match cmd!("docker", "build", "-t", format!("rustacean-{}", low_lang_name), "-f", format!("images/Dockerfile.{}", low_lang_name), ".").run() {
                 Ok(res) => {
                     if res.status.success() {
                         info!("    - {}: Available", &lang_name);
@@ -127,6 +129,7 @@ impl LangManager {
                 }
             };
         }
+        cmd!("docker", "image", "prune", "-f").run();
     }
 
     pub fn set_language_available(&mut self, lang: String, availability: bool) {

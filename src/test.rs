@@ -178,8 +178,8 @@ fn test_env() {
 
 #[test]
 fn test_docker() {
-    let res = cmd!("docker","run", "--rm", "-v", "snippets:/home:ro", "gcc",
-    "/bin/bash", "-c", "mkdir /code && cp -R /home/123456/* /code && gcc /code/test.c -o /code/test && /code/test"
+    let res = cmd!("docker","run", "--rm", "-v", "snippets:/home:ro", "rustacean-python",
+    "/bin/bash", "-c", "mkdir /code && cp -R /home/123456/* /code && python3 /code/test.py.out"
     ).stdout_capture().stderr_capture().read();
     dbg!(res);
 }

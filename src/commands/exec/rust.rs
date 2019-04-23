@@ -8,7 +8,7 @@ pub struct Rust;
 
 impl Language for Rust {
     fn get_image_name(&self) -> String {
-        "gcc".into()
+        "rustacean-rust".into()
     }
     
     fn get_lang_name(&self) -> String {

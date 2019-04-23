@@ -18,7 +18,7 @@ impl Lua {
 
 impl Language for Lua {
     fn get_image_name(&self) -> String {
-        "gcc".into()
+        "rustacean-lua".into()
     }
     
     fn get_lang_name(&self) -> String {

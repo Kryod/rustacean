@@ -14,7 +14,7 @@ impl Ruby {
 
 impl Language for Ruby {
     fn get_image_name(&self) -> String {
-        "gcc".into()
+        "rustacean-ruby".into()
     }
     
     fn get_lang_name(&self) -> String {
