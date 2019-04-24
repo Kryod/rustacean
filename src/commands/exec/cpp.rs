@@ -9,11 +9,11 @@ pub struct Cpp;
 impl Language for Cpp {
 
     fn get_image_name(&self) -> String {
-        "rustacean-c++".into()
+        "rustacean-cpp".into()
     }
 
     fn get_lang_name(&self) -> String {
-        "C++".into()
+        "Cpp".into()
     }
 
     fn get_source_file_ext(&self) -> String {

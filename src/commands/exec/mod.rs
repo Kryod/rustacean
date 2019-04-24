@@ -197,15 +197,23 @@ pub fn run_code(mut code: String, lang: BoxedLang, author: UserId) -> Result<(Co
         }
     };*/
 
-    //let local_src_path = src_path.clone();
     let filename = src_path.file_name().unwrap().to_str().unwrap();
     let mut src_path = PathBuf::from("/code");
     src_path.push(filename);
     let out_path = lang.get_out_path(&src_path);
     let image = lang.get_image_name().to_owned();
+    let mut exec_str = lang.get_execution_command(&out_path);
+
+    let compilation = match lang.get_compiler_command(&src_path, &out_path) {
+        Some(cmd) => format!(" && {}", cmd),
+        None => {
+            exec_str = lang.get_execution_command(&src_path);
+            String::from("")
+        },
+    };
 
     info!("Executing {} code", lang.get_lang_name());
-    let execution = match run_command(&src_path, author.to_string(), lang.get_compiler_command(&src_path, &out_path), lang.get_execution_command(&out_path), 10, &image) {
+    let execution = match run_command(author.to_string(), compilation, exec_str, 10, &image) {
         Ok(res) => res,
         Err(e) => {
             return Err(Error::new(ErrorKind::Other, format!("An error occurred while running code snippet: {}", e)));
@@ -409,25 +417,22 @@ fn save_code(code: &str, author: UserId, ext: &str) -> Result<PathBuf, Error> {
     Ok(path)
 }
 
-fn run_command(path: &PathBuf, userid: String, cmd_comp: Option<String>, cmd_exec: String, timeout: u64, image: &str) -> Result<CommandResult, Error> {
+fn run_command(userid: String, cmd_comp: String, cmd_exec: String, timeout: u64, image: &str) -> Result<CommandResult, Error> {
     let res = run_with_timeout(timeout, userid, cmd_comp, cmd_exec, image)?;
 
     Ok(res)
 }
 
 #[allow(unused_mut)]
-fn run_with_timeout(timeout: u64, userid: String, mut cmd_comp: Option<String>, mut cmd_exec: String, image: &str) -> Result<CommandResult, Error> {
+fn run_with_timeout(timeout: u64, userid: String, mut cmd_comp: String, mut cmd_exec: String, image: &str) -> Result<CommandResult, Error> {
     
-    let compilation = match cmd_comp {
-        Some(cmd) => format!(" && {}", cmd),
-        None => String::from(""),
-    };
+    
     //docker run -v snippets:/home:ro --network none gcc /bin/bash -c "mkdir /code && cp -R /home/123456/* /code && cd /code && gcc test.c -o test && ./test"
 
-    let cmd = cmd!("docker", "run", "--rm", "-v", "snippets:/home:ro",
+    let cmd = cmd!("docker", "run", "--rm", "-a", "stderr", "-a", "stdout", "-v", "snippets:/home:ro",
     "--network", "none", image,
     "/bin/bash", "-c",
-    format!("mkdir /code && cp -R /home/{}/* /code{} && {}", userid, compilation, cmd_exec));
+    format!("mkdir /code && cp -R /home/{}/* /code{} && {}", userid, cmd_comp, cmd_exec));
 
     //let res = cmd.stdout_capture().stderr_capture().run();
 
@@ -464,6 +469,7 @@ fn run_with_timeout(timeout: u64, userid: String, mut cmd_comp: Option<String>, 
 
     let output = child.wait()?;
 
+    dbg!(output);
     let stdout = ::std::str::from_utf8(&output.stdout)
         .map_err(| e | Error::new(ErrorKind::InvalidData, e))?
         .to_owned();

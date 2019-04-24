@@ -9,11 +9,11 @@ pub struct Csharp;
 impl Language for Csharp {
 
     fn get_image_name(&self) -> String {
-        "rustacean-c#".into()
+        "rustacean-csharp".into()
     }
 
     fn get_lang_name(&self) -> String {
-        "C#".into()
+        "CSharp".into()
     }
 
     fn get_source_file_ext(&self) -> String {
