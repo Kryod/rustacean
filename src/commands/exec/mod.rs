@@ -425,8 +425,6 @@ fn run_command(userid: String, cmd_comp: String, cmd_exec: String, timeout: u64,
 
 #[allow(unused_mut)]
 fn run_with_timeout(timeout: u64, userid: String, mut cmd_comp: String, mut cmd_exec: String, image: &str) -> Result<CommandResult, Error> {
-    
-    
     //docker run -v snippets:/home:ro --network none gcc /bin/bash -c "mkdir /code && cp -R /home/123456/* /code && cd /code && gcc test.c -o test && ./test"
 
     let cmd = cmd!("docker", "run", "--rm", "-t", "-a", "stderr", "-a", "stdout", "-v", "snippets:/home:ro",

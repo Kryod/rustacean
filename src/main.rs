@@ -175,10 +175,12 @@ fn cargo_test_thread(ctx: Arc<Mutex<Context>>) {
             let webhook = http::get_webhook_with_token(webhook_id, &webhook_token)
                 .expect("valid webhook");
 
-            let output = Command::new("cargo")
-                .arg("test")
-                .arg("--release")
-                .output();
+            let mut cargo = Command::new("cargo");
+            let cargo_test = match cfg!(debug_assertions) {
+                true => cargo.arg("test"),
+                false => cargo.arg("test").arg("--release"),
+            };
+            let output = cargo_test.output();
             let output = match output {
                 Ok(out) => out,
                 Err(err) => {
