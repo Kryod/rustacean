@@ -77,9 +77,9 @@ fn lock_directory(path: &PathBuf) {
         if let Err(e) = fs::create_dir_all(parent) {
             warn!("Could not create lock file parent directory: {}", e);
         };
-        if ::is_running_as_docker_container() {
-            let _ = cmd!("chown", "dev", &parent).run();
-        }
+        //if ::is_running_as_docker_container() {
+        //    let _ = cmd!("chown", "dev", &parent).run();
+        //}
 
         // We use .create_new(true) to prevent race conditions
         let file = fs::OpenOptions::new()
@@ -390,9 +390,9 @@ pub fn get_snippets_directory_for_user(user: UserId) -> Result<PathBuf, Error> {
     if !dir.exists() {
         fs::create_dir_all(dir.as_path())?;
     }
-    if ::is_running_as_docker_container() {
-        cmd!("chown", "dev", &dir).run()?;
-    }
+    //if ::is_running_as_docker_container() {
+    //    cmd!("chown", "dev", &dir).run()?;
+    //}
 
     Ok(dir)
 }
@@ -429,7 +429,7 @@ fn run_with_timeout(timeout: u64, userid: String, mut cmd_comp: String, mut cmd_
     
     //docker run -v snippets:/home:ro --network none gcc /bin/bash -c "mkdir /code && cp -R /home/123456/* /code && cd /code && gcc test.c -o test && ./test"
 
-    let cmd = cmd!("docker", "run", "--rm", "-a", "stderr", "-a", "stdout", "-v", "snippets:/home:ro",
+    let cmd = cmd!("docker", "run", "--rm", "-t", "-a", "stderr", "-a", "stdout", "-v", "snippets:/home:ro",
     "--network", "none", image,
     "/bin/bash", "-c",
     format!("mkdir /code && cp -R /home/{}/* /code{} && {}", userid, cmd_comp, cmd_exec));
@@ -450,7 +450,10 @@ fn run_with_timeout(timeout: u64, userid: String, mut cmd_comp: String, mut cmd_
                 break;
             },
             Ok(None) => {},
-            Err(e) => return Err(e),
+            Err(e) => {
+                warn!("Error occured in child.try_wait()");
+                break;
+            },
         };
 
         if start.elapsed() >= timeout {
