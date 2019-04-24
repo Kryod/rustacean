@@ -45,11 +45,7 @@ public class {} {{
     }
 
     fn get_out_path(&self, src_path: &PathBuf) -> PathBuf {
-        let mut buf = PathBuf::from(src_path);
-        buf = buf.parent().unwrap().to_path_buf();
-        buf.push(self.get_class_name(src_path));
-
-        buf
+        PathBuf::from(self.get_class_name(src_path))
     }
 
     fn get_compiler_command(&self, src_path: &PathBuf, _exe_path: &PathBuf) -> Option<String> {

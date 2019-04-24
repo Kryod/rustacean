@@ -73,28 +73,29 @@ struct Handler;
 
 impl EventHandler for Handler {
     fn ready(&self, ctx: Context, ready: Ready) {
-        info!("Connected as {}", ready.user.name);
-        info!("Open this link in a web browser to invite {} to a Discord server:\r\nhttps://discordapp.com/oauth2/authorize?client_id={}&scope=bot&permissions=378944", ready.user.name, ready.user.id);
-
         let ctx = Arc::new(Mutex::new(ctx));
 
         if let Some(shard) = ready.shard {
             // Note that array index 0 is 0-indexed, while index 1 is 1-indexed.
             //
             // This may seem unintuitive, but it models Discord's behaviour.
+            match shard[0] {
+                0 => {
+                    info!("Connected as {}", ready.user.name);
+                    info!("Open this link in a web browser to invite {} to a Discord server:\r\nhttps://discordapp.com/oauth2/authorize?client_id={}&scope=bot&permissions=378944", ready.user.name, ready.user.id);
+                }
+                1 => presence_status_thread(ready.user.id, ctx),
+                2 => cargo_test_thread(ctx),
+                3 => snippets_cleanup_thread(),
+                _ => { },
+            };
+
             println!(
                 "{} is connected on shard {}/{}!",
                 ready.user.name,
                 shard[0],
                 shard[1],
             );
-
-            match shard[0] {
-                1 => presence_status_thread(ready.user.id, ctx),
-                2 => cargo_test_thread(ctx),
-                3 => snippets_cleanup_thread(),
-                _ => { },
-            };
         }
     }
 

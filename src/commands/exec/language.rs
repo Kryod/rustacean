@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use duct::{ cmd, Expression };
+use duct::Expression;
 
 pub trait Language {
     fn get_image_name(&self) -> String;
@@ -14,7 +14,6 @@ pub trait Language {
         None
     }
     fn get_compiler_command(&self, src_path: &PathBuf, exe_path: &PathBuf) -> Option<String> {
-        let _ = std::fs::copy(src_path, exe_path);
         None
     }
     fn get_execution_command(&self, path: &PathBuf) -> String {

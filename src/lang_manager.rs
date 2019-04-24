@@ -110,6 +110,8 @@ impl LangManager {
 
     pub fn check_available_languages(&mut self) {
         info!("Checking available languages...");
+        let mut results: Vec<(bool, String)> = Vec::new();
+
         for (_lang_codes, boxed_lang) in self.languages.iter() {
             //let command = boxed_lang.check_compiler_or_interpreter().stdout_null().stderr_null();
             let lang_name = boxed_lang.get_lang_name();
@@ -118,17 +120,26 @@ impl LangManager {
             match cmd!("docker", "build", "-t", format!("rustacean-{}", low_lang_name), "-f", format!("images/Dockerfile.{}", low_lang_name), ".").run() {
                 Ok(res) => {
                     if res.status.success() {
-                        info!("    - {}: Available", &lang_name);
+                        results.push((true, format!("    - {}: Available", &lang_name)));
                         self.availability.insert(lang_name, true);
                     } else {
-                        warn!("    - {}: Unavailable", &lang_name);
+                        results.push((false, format!("    - {}: Unavailable", &lang_name)));
                     }
                 },
                 Err(e) => {
-                    warn!("    - {}: Unavailable ({})", &lang_name, e);
-                }
+                    results.push((false, format!("    - {}: Unavailable ({})", &lang_name, e)));
+                },
             };
         }
+
+        for (is_info, msg) in results {
+            if is_info {
+                info!("{}", msg);
+            } else {
+                warn!("{}", msg);
+            }
+        }
+
         cmd!("docker", "image", "prune", "-f").run();
     }
 

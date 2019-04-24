@@ -166,21 +166,57 @@ pub fn run_code(mut code: String, lang: BoxedLang, author: UserId) -> Result<(Co
         };
         code = modified;
     }
-    /*let compilation = match lang.get_compiler_command(&src_path, &out_path) {
-        Some(command) => {
-            info!("Compiling {} code", lang.get_lang_name());
-            run_command(&src_path, command, 30)
-        },
-        None => Ok(CommandResult::default())
+
+    let path_in_container = PathBuf::from("/home").join(src_path.file_name().unwrap());
+    let image = lang.get_image_name();
+    let out_path = lang.get_out_path(&path_in_container);
+
+    // Start container
+    let cmd = cmd!("docker", "run", "--network=none", "-t", "-d", image);
+    let container_id = cmd.stdout_capture().read()?;
+    let delete_container = || {
+        let _ = cmd!("docker", "kill", &container_id).stdout_capture().stderr_capture().run();
+        let _ = cmd!("docker", "rm", &container_id).stdout_capture().stderr_capture().run();
     };
+
+    // Copy source file to container
+    let cmd = cmd!("docker", "cp", src_path.to_str().unwrap(), format!("{}:{}", container_id, path_in_container.to_str().unwrap()));
+    match cmd.run() {
+        Ok(_) => { },
+        Err(e) => {
+            delete_container();
+            return Err(Error::new(ErrorKind::Other, format!("Could not copy code snippet to container: {}", e)));
+        }
+    };
+
+    // Compile code if necessary
+    let compilation = match lang.get_compiler_command(&path_in_container, &out_path) {
+        Some(command) => {
+            let mut args = vec!["exec", "-w", "/home", &container_id];
+            command.split(' ').for_each(|part| args.push(part));
+            let cmd = duct::cmd("docker", args);
+
+            info!("Compiling {} code", lang.get_lang_name());
+            run_command(cmd, 30)
+        },
+        None => {
+            // For interpreted languages, we just copy the source file to the destination path
+            let cmd = cmd!("docker", "cp", src_path.to_str().unwrap(), format!("{}:{}", container_id, out_path.to_str().unwrap()));
+            let _ = cmd.run();
+            Ok(CommandResult::default())
+        },
+    };
+    // Exit prematurely if compilation fails
     let compilation = match compilation {
         Ok(res) => res,
         Err(e) => {
+            delete_container();
             return Err(Error::new(ErrorKind::Other, format!("An error occurred while compiling code snippet: {}", e)));
         },
-    };*/
+    };
 
-    /*let execution = match compilation.exit_code {
+    // Execute code
+    let execution = match compilation.exit_code {
         Some(code) if code != 0 => {
             // Return a default value if compilation failed
             CommandResult::default()
@@ -188,40 +224,21 @@ pub fn run_code(mut code: String, lang: BoxedLang, author: UserId) -> Result<(Co
         _ => {
             // Compilation succeeded, run the snippet
             info!("Executing {} code", lang.get_lang_name());
-            match run_command(&src_path, lang.get_compiler_command(&src_path, &out_path), lang.get_execution_command(&out_path), 10) {
+            let exec_command = lang.get_execution_command(&out_path);
+            let mut args = vec!["exec", "-w", "/home", &container_id];
+            exec_command.split(' ').for_each(|part| args.push(part));
+            let cmd = duct::cmd("docker", args);
+            match run_command(cmd, 10) {
                 Ok(res) => res,
                 Err(e) => {
+                    delete_container();
                     return Err(Error::new(ErrorKind::Other, format!("An error occurred while running code snippet: {}", e)));
                 }
             }
         }
-    };*/
-
-    let filename = src_path.file_name().unwrap().to_str().unwrap();
-    let mut src_path = PathBuf::from("/code");
-    src_path.push(filename);
-    let out_path = lang.get_out_path(&src_path);
-    let image = lang.get_image_name().to_owned();
-    let mut exec_str = lang.get_execution_command(&out_path);
-
-    let compilation = match lang.get_compiler_command(&src_path, &out_path) {
-        Some(cmd) => format!(" && {}", cmd),
-        None => {
-            exec_str = lang.get_execution_command(&src_path);
-            String::from("")
-        },
     };
 
-    info!("Executing {} code", lang.get_lang_name());
-    let execution = match run_command(author.to_string(), compilation, exec_str, 10, &image) {
-        Ok(res) => res,
-        Err(e) => {
-            return Err(Error::new(ErrorKind::Other, format!("An error occurred while running code snippet: {}", e)));
-        }
-    };
-
-    let compilation = CommandResult::default();
-
+    delete_container();
     Ok((compilation, execution, code, lang.get_lang_name()))
 }
 
@@ -410,31 +427,16 @@ fn save_code(code: &str, author: UserId, ext: &str) -> Result<PathBuf, Error> {
     }
     fs::write(path.as_path(), code)?;
 
-    if ::is_running_as_docker_container() {
-        let _ = cmd!("chown", "dev", path.as_path()).run();
-    }
+    //if ::is_running_as_docker_container() {
+    //    let _ = cmd!("chown", "dev", path.as_path()).run();
+    //}
 
     Ok(path)
 }
 
-fn run_command(userid: String, cmd_comp: String, cmd_exec: String, timeout: u64, image: &str) -> Result<CommandResult, Error> {
-    let res = run_with_timeout(timeout, userid, cmd_comp, cmd_exec, image)?;
-
-    Ok(res)
-}
-
-#[allow(unused_mut)]
-fn run_with_timeout(timeout: u64, userid: String, mut cmd_comp: String, mut cmd_exec: String, image: &str) -> Result<CommandResult, Error> {
-    //docker run -v snippets:/home:ro --network none gcc /bin/bash -c "mkdir /code && cp -R /home/123456/* /code && cd /code && gcc test.c -o test && ./test"
-
-    let cmd = cmd!("docker", "run", "--rm", "-t", "-a", "stderr", "-a", "stdout", "-v", "snippets:/home:ro",
-    "--network", "none", image,
-    "/bin/bash", "-c",
-    format!("mkdir /code && cp -R /home/{}/* /code{} && {}", userid, cmd_comp, cmd_exec));
-
-    //let res = cmd.stdout_capture().stderr_capture().run();
-
+fn run_command(cmd: Expression, timeout: u64) -> Result<CommandResult, Error> {
     let child = cmd
+        .unchecked()
         .stdout_capture()
         .stderr_capture()
         .start()?;
@@ -443,15 +445,11 @@ fn run_with_timeout(timeout: u64, userid: String, mut cmd_comp: String, mut cmd_
     let start = Instant::now();
 
     loop {
-        match child.try_wait() {
-            Ok(Some(_)) => {
+        match child.try_wait()? {
+            Some(_) => {
                 break;
             },
-            Ok(None) => {},
-            Err(e) => {
-                warn!("Error occured in child.try_wait()");
-                break;
-            },
+            None => {},
         };
 
         if start.elapsed() >= timeout {
@@ -470,7 +468,6 @@ fn run_with_timeout(timeout: u64, userid: String, mut cmd_comp: String, mut cmd_
 
     let output = child.wait()?;
 
-    dbg!(output);
     let stdout = ::std::str::from_utf8(&output.stdout)
         .map_err(| e | Error::new(ErrorKind::InvalidData, e))?
         .to_owned();
