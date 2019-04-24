@@ -15,7 +15,7 @@ fn update(migration_dir: &str, url: &str) {
 
 /// Runs database update scripts if necessary.
 /// 
-/// Use it with `cargo run --bin tools update-db`.
+/// Use it with `cargo run update-db`.
 /// 
 /// This command should be used after pulling from the repository.
 pub fn update_db() {
