@@ -3,9 +3,10 @@ services:
 
 before_install:
   - docker build -t rustacean -f Dockerfile.test .
+  - docker volumes create --name snippets
 
 script:
-  - docker run rustacean /bin/sh -c "cargo test"
+  - docker run -v snippets:/home/snippets -v /var/run/docker.sock:/var/run/docker.sock rustacean /bin/sh -c "cargo test"
 
 after_success:
   - wget https://raw.githubusercontent.com/DiscordHooks/travis-ci-discord-webhook/master/send.sh
