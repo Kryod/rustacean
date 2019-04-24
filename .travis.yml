@@ -3,7 +3,7 @@ services:
 
 before_install:
   - docker build -t rustacean -f Dockerfile.test .
-  - docker volumes create --name snippets
+  - docker volume create --name snippets
 
 script:
   - docker run -v snippets:/home/snippets -v /var/run/docker.sock:/var/run/docker.sock rustacean /bin/sh -c "cargo test"
