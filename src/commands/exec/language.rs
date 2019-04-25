@@ -13,7 +13,7 @@ pub trait Language {
     fn pre_process_code(&self, _code: &str, _src_path: &PathBuf) -> Option<String> {
         None
     }
-    fn get_compiler_command(&self, src_path: &PathBuf, exe_path: &PathBuf) -> Option<String> {
+    fn get_compiler_command(&self, _src_path: &PathBuf, _exe_path: &PathBuf) -> Option<String> {
         None
     }
     fn get_execution_command(&self, path: &PathBuf) -> String {
