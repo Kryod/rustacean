@@ -545,6 +545,6 @@ fn set_game_presence(ctx: &Context, game_name: &str) {
     ctx.set_presence(Some(game), status);
 }
 
-fn is_running_as_docker_container() -> bool {
-    !std::env::var("DOCKER_ENV").is_err()
-}
+//fn is_running_as_docker_container() -> bool {
+//    !std::env::var("DOCKER_ENV").is_err()
+//}

@@ -140,7 +140,10 @@ impl LangManager {
             }
         }
 
-        cmd!("docker", "image", "prune", "-f").run();
+        match cmd!("docker", "image", "prune", "-f").run() {
+            Ok(_) => {},
+            Err(e) => panic!(e),
+        };
     }
 
     pub fn set_language_available(&mut self, lang: String, availability: bool) {

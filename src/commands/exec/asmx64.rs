@@ -28,7 +28,7 @@ impl Language for Asmx64 {
 
     fn get_compiler_command(&self, src_path: &PathBuf, exe_path: &PathBuf) -> Option<String> {
 
-        Some(format!("nasm -f elf32 {} && ld {}.o -o {}", src_path.to_str().unwrap(), self.get_file_name(src_path), exe_path.to_str().unwrap()))
+        Some(format!("nasm -f elf64 {} && ld {}.o -o {}", src_path.to_str().unwrap(), self.get_file_name(src_path), exe_path.to_str().unwrap()))
         //Some(cmd!("nasm", "-f", "elf64", src_path)
         //    .then(cmd!("ld", format!("{}.o", self.get_file_name(src_path)), "-o", exe_path)))
     }
