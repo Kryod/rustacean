@@ -405,7 +405,7 @@ fn save_code(code: &str, author: UserId, ext: &str) -> Result<PathBuf, Error> {
 
 fn run_command(cmd: Expression, timeout: u64) -> Result<CommandResult, Error> {
     let child = cmd
-        .unchecked()
+        .unchecked() // important! allows us to get stderr instead of an `Error` if the process exits with a non-zero exit code
         .stdout_capture()
         .stderr_capture()
         .start()?;
