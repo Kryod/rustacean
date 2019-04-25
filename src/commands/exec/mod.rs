@@ -67,35 +67,6 @@ pub struct CommandResult {
     pub timed_out: bool,
 }
 
-/// Function will put a .lock on a folder, preventing multiple actions on same folder. 
-fn lock_directory(path: &PathBuf) {
-    let mut lock_file = path.clone();
-    lock_file.push(".lock");
-    loop {
-        // Make sure that the parent directory exists, otherwise creating the lock will fail
-        let parent = lock_file.parent().expect("Could not get lock file parent directory");
-        if let Err(e) = fs::create_dir_all(parent) {
-            warn!("Could not create lock file parent directory: {}", e);
-        };
-        //if ::is_running_as_docker_container() {
-        //    let _ = cmd!("chown", "dev", &parent).run();
-        //}
-
-        // We use .create_new(true) to prevent race conditions
-        let file = fs::OpenOptions::new()
-            .create_new(true)
-            .write(true)
-            .open(&lock_file);
-
-        // Wait a bit and try again if the lock file could not be created (because it already exists) or break out of the loop if we could lock the directory
-        match file {
-            Err(_e) => std::thread::sleep(Duration::from_millis(20)),
-            Ok(_file) => break,
-        };
-    }
-    info!("Locked up user snippet directory {}", lock_file.parent().unwrap().to_str().unwrap());
-}
-
 pub fn cleanup_user_snippet_directory(user: UserId) -> Result<(), Error> {
     let dir = get_snippets_directory_for_user(user)?;
     info!("Cleaning up user snippet directory {}...", dir.to_str().unwrap());
@@ -275,7 +246,7 @@ command!(exec(ctx, msg, _args) {
 
     let (mut compilation, mut execution, lang) = {
         let lang = {
-            // We make sure to lock the data in a seperate code block,
+            // We make sure to lock the data in a separate code block,
             // Otherwise we would block the mutex through the entire compiling and/or executing phases
             let data = ctx.data.lock();
             let mngr = data.get::<::LangManager>().unwrap().lock().unwrap();
@@ -416,8 +387,6 @@ pub fn get_snippets_directory_for_user(user: UserId) -> Result<PathBuf, Error> {
 
 fn save_code(code: &str, author: UserId, ext: &str) -> Result<PathBuf, Error> {
     let mut path = get_snippets_directory_for_user(author)?;
-
-    lock_directory(&path);
 
     loop {
         path.push(get_random_filename(ext));
