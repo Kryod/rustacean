@@ -2,10 +2,8 @@ language: rust
 rust: 
   - 1.33.0
 
-services:
-  - docker
-
 before_install:
+  - curl -sSL https://get.docker.com/ | sh
   - docker build -t rustacean -f Dockerfile.test .
   - cargo run build-images
 
