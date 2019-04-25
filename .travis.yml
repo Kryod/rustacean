@@ -7,7 +7,7 @@ services:
 
 before_install:
   - docker build -t rustacean -f Dockerfile.test .
-  - cargo run build_images
+  - cargo run build-images
 
 script:
   - docker run -v /var/run/docker.sock:/var/run/docker.sock rustacean /bin/sh -c "cargo test"
