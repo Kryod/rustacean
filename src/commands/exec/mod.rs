@@ -67,26 +67,6 @@ pub struct CommandResult {
     pub timed_out: bool,
 }
 
-pub fn cleanup_user_snippet_directory(user: UserId) -> Result<(), Error> {
-    let dir = get_snippets_directory_for_user(user)?;
-    info!("Cleaning up user snippet directory {}...", dir.to_str().unwrap());
-    let dir_str = dir.to_str().expect("Could not get user snippet directory as str");
-    if cfg!(windows) {
-        // On Windows, remove_dir_all() sometimes gives an Err with "The directory is not empty", so we use a command instead
-        let arg = format!("del /S /Q {}", dir_str);
-        if let Err(e) = std::process::Command::new("cmd").args(&["/C", &arg]).output() {
-            warn!("Could not cleanup user snippet directory: {}", e);
-            return Err(Error::new(ErrorKind::Other, format!("Could not cleanup user snippet directory: {}", e)));
-        };
-    } else {
-        if let Err(e) = std::process::Command::new("rm").args(&["-rf", dir_str]).output() {
-            warn!("Could not cleanup user snippet directory: {}", e);
-            return Err(Error::new(ErrorKind::Other, format!("Could not cleanup user snippet directory: {}", e)));
-        };
-    }
-    Ok(())
-}
-
 fn pre_process_code(mut code: String) -> String {
     let re = regex::Regex::new(r"[\u200B-\u200F]").unwrap(); // Invisible characters (Zero-Width Space, Zero Width Non-Joiner, Zero Width Joiner, Left-To-Right Mark, Right-To-Left Mark)
     code = re.replace_all(&code, "").into();
@@ -145,7 +125,8 @@ pub fn run_code(mut code: String, lang: BoxedLang, author: UserId) -> Result<(Co
     // Start container
     let cmd = cmd!("docker", "run", "--network=none", "-t", "-d", image);
     let container_id = cmd.stdout_capture().read()?;
-    let delete_container = || {
+    let cleanup = || {
+        let _ = fs::remove_file(&src_path);
         let _ = cmd!("docker", "kill", &container_id).stdout_capture().stderr_capture().run();
         let _ = cmd!("docker", "rm", &container_id).stdout_capture().stderr_capture().run();
     };
@@ -155,7 +136,7 @@ pub fn run_code(mut code: String, lang: BoxedLang, author: UserId) -> Result<(Co
     match cmd.run() {
         Ok(_) => { },
         Err(e) => {
-            delete_container();
+            cleanup();
             return Err(Error::new(ErrorKind::Other, format!("Could not copy code snippet to container: {}", e)));
         }
     };
@@ -170,13 +151,12 @@ pub fn run_code(mut code: String, lang: BoxedLang, author: UserId) -> Result<(Co
                 let mut args = vec!["exec", "-w", "/home", &container_id];
                 command.split(' ').for_each(|part| args.push(part));
 
-                info!("args are {:?}", args.clone());
                 let cmd = duct::cmd("docker", args);
 
                 res = match run_command(cmd, 30) {
                     Ok(res) => Ok(res),
                     Err(e) => {
-                        delete_container();
+                        cleanup();
                         return Err(Error::new(ErrorKind::Other, format!("An error occurred while compiling code snippet: {}", e)));
                     }
                 };
@@ -194,7 +174,7 @@ pub fn run_code(mut code: String, lang: BoxedLang, author: UserId) -> Result<(Co
     let compilation = match compilation {
         Ok(res) => res,
         Err(e) => {
-            delete_container();
+            cleanup();
             return Err(Error::new(ErrorKind::Other, format!("An error occurred while compiling code snippet: {}", e)));
         },
     };
@@ -215,14 +195,14 @@ pub fn run_code(mut code: String, lang: BoxedLang, author: UserId) -> Result<(Co
             match run_command(cmd, 10) {
                 Ok(res) => res,
                 Err(e) => {
-                    delete_container();
+                    cleanup();
                     return Err(Error::new(ErrorKind::Other, format!("An error occurred while running code snippet: {}", e)));
                 }
             }
         }
     };
 
-    delete_container();
+    cleanup();
     Ok((compilation, execution, code, lang.get_lang_name()))
 }
 
