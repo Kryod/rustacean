@@ -161,14 +161,27 @@ pub fn run_code(mut code: String, lang: BoxedLang, author: UserId) -> Result<(Co
     };
 
     // Compile code if necessary
-    let compilation = match lang.get_compiler_command(&path_in_container, &out_path) {
+    let compilation: Result<CommandResult, Error> = match lang.get_compiler_command(&path_in_container, &out_path) {
         Some(command) => {
-            let mut args = vec!["exec", "-w", "/home", &container_id];
-            command.split(' ').for_each(|part| args.push(part));
-            let cmd = duct::cmd("docker", args);
-
+            let commands = command.split("&&").map(|command| command.trim());
+            let mut res = Ok(CommandResult::default());
             info!("Compiling {} code", lang.get_lang_name());
-            run_command(cmd, 30)
+            for command in commands {
+                let mut args = vec!["exec", "-w", "/home", &container_id];
+                command.split(' ').for_each(|part| args.push(part));
+
+                info!("args are {:?}", args.clone());
+                let cmd = duct::cmd("docker", args);
+
+                res = match run_command(cmd, 30) {
+                    Ok(res) => Ok(res),
+                    Err(e) => {
+                        delete_container();
+                        return Err(Error::new(ErrorKind::Other, format!("An error occurred while compiling code snippet: {}", e)));
+                    }
+                };
+            }
+            res
         },
         None => {
             // For interpreted languages, we just copy the source file to the destination path
