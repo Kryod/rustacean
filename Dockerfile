@@ -1,4 +1,4 @@
-FROM kryod/kryod/rustacean-test:latest
+FROM kryod/rustacean-test:latest
 
 RUN cargo build --release
 
