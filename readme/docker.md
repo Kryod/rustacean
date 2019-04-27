@@ -28,9 +28,10 @@ user@machine:~/rustacean$ sudo docker build -t rusttest -f Dockerfile.test .
 ```
 
 Now you have an environnement with all the required dependencies. To start working you need to run the docker and link it with the folder where you "git cloned" this repository.
+You need to link your daemon docker with the container so it can spawn other containers (and you can control all the containers and view all the images available).
 
 ```sh
-user@machine:~/rustacean$ sudo docker run -it -v "$(pwd)":/home rusttest
+user@machine:~/rustacean$ sudo docker run -it -v "$(pwd)":/home -v /var/run/docker.sock:/var/run/docker.sock rusttest
 root@docker-id:/home$ cargo run update-db
 ```
 
@@ -46,7 +47,7 @@ user@machine:~/rustacean$ sudo docker pull kryod/rustacean:latest
 Now you want this image to run on a server or something that will be on 24/7. You will probably want to have access to the logs of the bot if it crashes so you need to link the `rustacean.log` file in this directory to the `rustacean.log` file on the docker container.
 ```sh
 user@machine:~/rustacean$ touch rustacean.log rustacean.sqlite3
-user@machine:~/rustacean$ sudo docker run --name="rustacean" -t --restart="always" -d -v "$(pwd)/rustacean.log":/home/rustacean.log -v "$(pwd)/rustacean.sqlite3":/home/rustacean.sqlite3 -v "$(pwd)/config.toml":/home/config.toml kryod/rustacean:latest
+user@machine:~/rustacean$ sudo docker run --name="rustacean" -t --restart="always" -d -v "$(pwd)/rustacean.log":/home/rustacean.log -v "$(pwd)/rustacean.sqlite3":/home/rustacean.sqlite3 -v "$(pwd)/config.toml":/home/config.toml -v /var/run/docker.sock:/var/run/docker.sock kryod/rustacean:latest
 user@machine:~/rustacean$ sudo docker exec -it rustacean cargo run --release update-db # Remember to always run this command if you pull updates from the repository in order to keep your database up to date
 user@machine:~/rustacean$ tail -f rustacean.log # You can now run this to monitor the bot
 ```
