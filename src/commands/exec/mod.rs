@@ -211,9 +211,12 @@ command!(exec(ctx, msg, _args) {
     let split = arg.split("```");
     let data = ctx.data.lock();
     let (command_prefix, cpu_load, ram_load) = {
-        (data.get::<::Settings>().unwrap().lock().unwrap().command_prefix.clone(),
-        data.get::<::Settings>().unwrap().lock().unwrap().cpu_load.clone(),
-        data.get::<::Settings>().unwrap().lock().unwrap().ram_load.clone())
+        let settings = data.get::<::Settings>().unwrap().lock().unwrap();
+        (
+            settings.command_prefix.clone(),
+            settings.cpu_load.clone(),
+            settings.ram_load.clone(),
+        )
     };
 
     let langs = data.get::<::LangManager>().unwrap().lock().unwrap().get_languages_list();
