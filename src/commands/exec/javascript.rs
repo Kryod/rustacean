@@ -19,6 +19,10 @@ impl JavaScript {
 }
 
 impl Language for JavaScript {
+    fn get_image_name(&self) -> String {
+        "rustacean-javascript".into()
+    }
+
     fn get_lang_name(&self) -> String {
         "JavaScript".into()
     }
@@ -27,8 +31,8 @@ impl Language for JavaScript {
         ".js".into()
     }
 
-    fn get_execution_command(&self, path: &PathBuf) -> Expression {
-        cmd!(self.get_interpreter(), path)
+    fn get_execution_command(&self, path: &PathBuf) -> String {
+        format!("{} {}", self.get_interpreter(), path.to_str().unwrap())
     }
 
     fn check_compiler_or_interpreter(&self) -> Expression {

@@ -1,11 +1,14 @@
-services:
-  - docker
+language: rust
+rust: 
+  - 1.33.0
 
 before_install:
+  - curl -sSL https://get.docker.com/ | sh
   - docker build -t rustacean -f Dockerfile.test .
+  - cargo run build-images
 
 script:
-  - docker run rustacean /bin/sh -c "cargo test"
+  - docker run -v /var/run/docker.sock:/var/run/docker.sock rustacean /bin/sh -c "cargo test"
 
 after_success:
   - wget https://raw.githubusercontent.com/DiscordHooks/travis-ci-discord-webhook/master/send.sh

@@ -63,6 +63,8 @@ struct Settings {
     pub webhook_token: Option<String>,
     pub webhook_frequency: Option<u64>,
     pub webhook_role: Option<String>,
+    pub cpu_load: String,
+    pub ram_load: String,
 }
 
 impl Key for Settings {
@@ -73,28 +75,29 @@ struct Handler;
 
 impl EventHandler for Handler {
     fn ready(&self, ctx: Context, ready: Ready) {
-        info!("Connected as {}", ready.user.name);
-        info!("Open this link in a web browser to invite {} to a Discord server:\r\nhttps://discordapp.com/oauth2/authorize?client_id={}&scope=bot&permissions=378944", ready.user.name, ready.user.id);
-
         let ctx = Arc::new(Mutex::new(ctx));
 
         if let Some(shard) = ready.shard {
             // Note that array index 0 is 0-indexed, while index 1 is 1-indexed.
             //
             // This may seem unintuitive, but it models Discord's behaviour.
+            match shard[0] {
+                0 => {
+                    info!("Connected as {}", ready.user.name);
+                    info!("Open this link in a web browser to invite {} to a Discord server:\r\nhttps://discordapp.com/oauth2/authorize?client_id={}&scope=bot&permissions=378944", ready.user.name, ready.user.id);
+                }
+                1 => presence_status_thread(ready.user.id, ctx),
+                2 => cargo_test_thread(ctx),
+                3 => snippets_cleanup_thread(),
+                _ => { },
+            };
+
             println!(
                 "{} is connected on shard {}/{}!",
                 ready.user.name,
                 shard[0],
                 shard[1],
             );
-
-            match shard[0] {
-                1 => presence_status_thread(ready.user.id, ctx),
-                2 => cargo_test_thread(ctx),
-                3 => snippets_cleanup_thread(),
-                _ => { },
-            };
         }
     }
 
@@ -175,10 +178,12 @@ fn cargo_test_thread(ctx: Arc<Mutex<Context>>) {
             let webhook = http::get_webhook_with_token(webhook_id, &webhook_token)
                 .expect("valid webhook");
 
-            let output = Command::new("cargo")
-                .arg("test")
-                .arg("--release")
-                .output();
+            let mut cargo = Command::new("cargo");
+            let cargo_test = match cfg!(debug_assertions) {
+                true => cargo.arg("test"),
+                false => cargo.arg("test").arg("--release"),
+            };
+            let output = cargo_test.output();
             let output = match output {
                 Ok(out) => out,
                 Err(err) => {
@@ -443,9 +448,6 @@ fn main() {
                 .desc("Get an invite link to add Rustacean to other servers."))
             .command("exec", |c| c
                 .cmd(commands::exec::exec)
-                .after(|_ctx: &mut Context, msg: &Message, _res: &Result<(), serenity::framework::standard::CommandError>| {
-                    let _ = commands::exec::cleanup_user_snippet_directory(msg.author.id);
-                })
                 .batch_known_as(["execute", "run", "code"].iter())
                 .desc(&format!("Executes a code snippet. Your message needs to look like this:\r\n{}exec\r\n\\`\\`\\`language\r\n\r\ncode...\r\n\\`\\`\\`\r\nwhere `language` is the language of your choice.\r\nFor example:\r\n{}exec\r\n\\`\\`\\`javascript\r\nconsole.log(\"hi!\");\r\n\\`\\`\\`", command_prefix, command_prefix))
                 .bucket("exec_bucket"))
@@ -542,6 +544,6 @@ fn set_game_presence(ctx: &Context, game_name: &str) {
     ctx.set_presence(Some(game), status);
 }
 
-fn is_running_as_docker_container() -> bool {
-    !std::env::var("DOCKER_ENV").is_err()
-}
+//fn is_running_as_docker_container() -> bool {
+//    !std::env::var("DOCKER_ENV").is_err()
+//}

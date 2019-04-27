@@ -10,10 +10,15 @@ bot_owners = [
 log_level_term = "Info"
 log_level_file = "Debug"
 
+# The maximum load per container launch (for 1 core) from 0 to 1 (for multiple core you can go up to the nomber of cores you have)
+cpu_load = "0.80"
+# The maximum RAM used by a single container (m for MB and g for GB according to the docker documentation)
+ram_load = "250m"
+
 db_connection_pool_size = 8
 
 # If you want to be pinged about the status of the bot, uncomment and fill the following fields.
-# webhook example: https://discordapp.com/api/webhooks/webhook_id/webhook_token
+# webhook example: https://discordapp.com/api/webhooks/{webhook_id}/{webhook_token}
 #webhook_id = 123456789
 #webhook_token = "AbC123xYz"
 #webhook_frequency = 60 # In minutes

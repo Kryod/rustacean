@@ -13,17 +13,23 @@ impl Asmx86 {
 }
 
 impl Language for Asmx86 {
+    fn get_image_name(&self) -> String {
+        "rustacean-asm32".into()
+    }
+
     fn get_lang_name(&self) -> String {
-        "Asm 32 bit".into()
+        "Asm32".into()
     }
 
     fn get_source_file_ext(&self) -> String {
         ".asm".into()
     }
 
-    fn get_compiler_command(&self, src_path: &PathBuf, exe_path: &PathBuf) -> Option<Expression> {
-        Some(cmd!("nasm", "-f", "elf32", src_path)
-            .then(cmd!("ld", "-melf_i386", format!("{}.o", self.get_file_name(src_path)), "-o", exe_path)))
+    fn get_compiler_command(&self, src_path: &PathBuf, exe_path: &PathBuf) -> Option<String> {
+
+        Some(format!("nasm -f elf32 {} && ld -melf_i386 {}.o -o {}", src_path.to_str().unwrap(), self.get_file_name(src_path), exe_path.to_str().unwrap()))
+        //Some(cmd!("nasm", "-f", "elf32", src_path)
+        //    .then(cmd!("ld", "-melf_i386", format!("{}.o", self.get_file_name(src_path)), "-o", exe_path)))
     }
 
     fn check_compiler_or_interpreter(&self) -> Expression {

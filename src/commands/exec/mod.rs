@@ -67,55 +67,6 @@ pub struct CommandResult {
     pub timed_out: bool,
 }
 
-/// Function will put a .lock on a folder, preventing multiple actions on same folder. 
-fn lock_directory(path: &PathBuf) {
-    let mut lock_file = path.clone();
-    lock_file.push(".lock");
-    loop {
-        // Make sure that the parent directory exists, otherwise creating the lock will fail
-        let parent = lock_file.parent().expect("Could not get lock file parent directory");
-        if let Err(e) = fs::create_dir_all(parent) {
-            warn!("Could not create lock file parent directory: {}", e);
-        };
-        if ::is_running_as_docker_container() {
-            let _ = cmd!("chown", "dev", &parent).run();
-        }
-
-        // We use .create_new(true) to prevent race conditions
-        let file = fs::OpenOptions::new()
-            .create_new(true)
-            .write(true)
-            .open(&lock_file);
-
-        // Wait a bit and try again if the lock file could not be created (because it already exists) or break out of the loop if we could lock the directory
-        match file {
-            Err(_e) => std::thread::sleep(Duration::from_millis(20)),
-            Ok(_file) => break,
-        };
-    }
-    info!("Locked up user snippet directory {}", lock_file.parent().unwrap().to_str().unwrap());
-}
-
-pub fn cleanup_user_snippet_directory(user: UserId) -> Result<(), Error> {
-    let dir = get_snippets_directory_for_user(user)?;
-    info!("Cleaning up user snippet directory {}...", dir.to_str().unwrap());
-    let dir_str = dir.to_str().expect("Could not get user snippet directory as str");
-    if cfg!(windows) {
-        // On Windows, remove_dir_all() sometimes gives an Err with "The directory is not empty", so we use a command instead
-        let arg = format!("del /S /Q {}", dir_str);
-        if let Err(e) = std::process::Command::new("cmd").args(&["/C", &arg]).output() {
-            warn!("Could not cleanup user snippet directory: {}", e);
-            return Err(Error::new(ErrorKind::Other, format!("Could not cleanup user snippet directory: {}", e)));
-        };
-    } else {
-        if let Err(e) = std::process::Command::new("rm").args(&["-rf", dir_str]).output() {
-            warn!("Could not cleanup user snippet directory: {}", e);
-            return Err(Error::new(ErrorKind::Other, format!("Could not cleanup user snippet directory: {}", e)));
-        };
-    }
-    Ok(())
-}
-
 fn pre_process_code(mut code: String) -> String {
     let re = regex::Regex::new(r"[\u200B-\u200F]").unwrap(); // Invisible characters (Zero-Width Space, Zero Width Non-Joiner, Zero Width Joiner, Left-To-Right Mark, Right-To-Left Mark)
     code = re.replace_all(&code, "").into();
@@ -148,7 +99,7 @@ pub fn get_lang(lang_manager: &LangManager, lang_code: &str) -> Result<BoxedLang
     }
 }
 
-pub fn run_code(mut code: String, lang: BoxedLang, author: UserId) -> Result<(CommandResult, CommandResult, String, String), Error> {
+pub fn run_code(cpu_load: Option<&str>, ram_load: Option<&str>, mut code: String, lang: BoxedLang, author: UserId) -> Result<(CommandResult, CommandResult, String, String), Error> {
     let src_path = match save_code(&code, author, &lang.get_source_file_ext()) {
         Ok(path) => path,
         Err(e) => {
@@ -167,21 +118,68 @@ pub fn run_code(mut code: String, lang: BoxedLang, author: UserId) -> Result<(Co
         code = modified;
     }
 
-    let out_path = lang.get_out_path(&src_path);
-    let compilation = match lang.get_compiler_command(&src_path, &out_path) {
-        Some(command) => {
-            info!("Compiling {} code", lang.get_lang_name());
-            run_command(&src_path, command, 30)
-        },
-        None => Ok(CommandResult::default())
+    let path_in_container = PathBuf::from("/home").join(src_path.file_name().unwrap());
+    let image = lang.get_image_name();
+    let out_path = lang.get_out_path(&path_in_container);
+
+    // Start container
+    let cmd = cmd!("docker", "run", "--network=none", "--cpus", cpu_load.unwrap_or("0.000"), "--memory", ram_load.unwrap_or("0"), "-t", "-d", image);
+    let container_id = cmd.stdout_capture().read()?;
+    let cleanup = || {
+        let _ = fs::remove_file(&src_path);
+        let _ = cmd!("docker", "kill", &container_id).stdout_capture().stderr_capture().run();
+        let _ = cmd!("docker", "rm", &container_id).stdout_capture().stderr_capture().run();
     };
+
+    // Copy source file to container
+    let cmd = cmd!("docker", "cp", src_path.to_str().unwrap(), format!("{}:{}", container_id, path_in_container.to_str().unwrap()));
+    match cmd.run() {
+        Ok(_) => { },
+        Err(e) => {
+            cleanup();
+            return Err(Error::new(ErrorKind::Other, format!("Could not copy code snippet to container: {}", e)));
+        }
+    };
+
+    // Compile code if necessary
+    let compilation: Result<CommandResult, Error> = match lang.get_compiler_command(&path_in_container, &out_path) {
+        Some(command) => {
+            let commands = command.split("&&").map(|command| command.trim());
+            let mut res = Ok(CommandResult::default());
+            info!("Compiling {} code", lang.get_lang_name());
+            for command in commands {
+                let mut args = vec!["exec", "-w", "/home", &container_id];
+                command.split(' ').for_each(|part| args.push(part));
+
+                let cmd = duct::cmd("docker", args);
+
+                res = match run_command(cmd, 30) {
+                    Ok(res) => Ok(res),
+                    Err(e) => {
+                        cleanup();
+                        return Err(Error::new(ErrorKind::Other, format!("An error occurred while compiling code snippet: {}", e)));
+                    }
+                };
+            }
+            res
+        },
+        None => {
+            // For interpreted languages, we just copy the source file to the destination path
+            let cmd = cmd!("docker", "cp", src_path.to_str().unwrap(), format!("{}:{}", container_id, out_path.to_str().unwrap()));
+            let _ = cmd.run();
+            Ok(CommandResult::default())
+        },
+    };
+    // Exit prematurely if compilation fails
     let compilation = match compilation {
         Ok(res) => res,
         Err(e) => {
+            cleanup();
             return Err(Error::new(ErrorKind::Other, format!("An error occurred while compiling code snippet: {}", e)));
         },
     };
 
+    // Execute code
     let execution = match compilation.exit_code {
         Some(code) if code != 0 => {
             // Return a default value if compilation failed
@@ -190,15 +188,21 @@ pub fn run_code(mut code: String, lang: BoxedLang, author: UserId) -> Result<(Co
         _ => {
             // Compilation succeeded, run the snippet
             info!("Executing {} code", lang.get_lang_name());
-            match run_command(&src_path, lang.get_execution_command(&out_path), 10) {
+            let exec_command = lang.get_execution_command(&out_path);
+            let mut args = vec!["exec", "-w", "/home", &container_id];
+            exec_command.split(' ').for_each(|part| args.push(part));
+            let cmd = duct::cmd("docker", args);
+            match run_command(cmd, 10) {
                 Ok(res) => res,
                 Err(e) => {
+                    cleanup();
                     return Err(Error::new(ErrorKind::Other, format!("An error occurred while running code snippet: {}", e)));
                 }
             }
         }
     };
 
+    cleanup();
     Ok((compilation, execution, code, lang.get_lang_name()))
 }
 
@@ -206,9 +210,15 @@ command!(exec(ctx, msg, _args) {
     let arg = msg.content.clone();
     let split = arg.split("```");
     let data = ctx.data.lock();
-    let command_prefix = {
-        data.get::<::Settings>().unwrap().lock().unwrap().command_prefix.clone()
+    let (command_prefix, cpu_load, ram_load) = {
+        let settings = data.get::<::Settings>().unwrap().lock().unwrap();
+        (
+            settings.command_prefix.clone(),
+            settings.cpu_load.clone(),
+            settings.ram_load.clone(),
+        )
     };
+
     let langs = data.get::<::LangManager>().unwrap().lock().unwrap().get_languages_list();
     drop(data);
 
@@ -235,7 +245,7 @@ command!(exec(ctx, msg, _args) {
 
     let (mut compilation, mut execution, lang) = {
         let lang = {
-            // We make sure to lock the data in a seperate code block,
+            // We make sure to lock the data in a separate code block,
             // Otherwise we would block the mutex through the entire compiling and/or executing phases
             let data = ctx.data.lock();
             let mngr = data.get::<::LangManager>().unwrap().lock().unwrap();
@@ -257,7 +267,7 @@ command!(exec(ctx, msg, _args) {
                 Err(e) => warn!("Could not save snippet to db: {}", e),
             };
         }
-        match run_code(code, lang, msg.author.id) {
+        match run_code(Some(&cpu_load), Some(&ram_load), code, lang, msg.author.id) {
             Ok((c, e, _processed_code, l)) => {
                 (c, e, l)
             },
@@ -367,17 +377,15 @@ pub fn get_snippets_directory_for_user(user: UserId) -> Result<PathBuf, Error> {
     if !dir.exists() {
         fs::create_dir_all(dir.as_path())?;
     }
-    if ::is_running_as_docker_container() {
-        cmd!("chown", "dev", &dir).run()?;
-    }
+    //if ::is_running_as_docker_container() {
+    //    cmd!("chown", "dev", &dir).run()?;
+    //}
 
     Ok(dir)
 }
 
 fn save_code(code: &str, author: UserId, ext: &str) -> Result<PathBuf, Error> {
     let mut path = get_snippets_directory_for_user(author)?;
-
-    lock_directory(&path);
 
     loop {
         path.push(get_random_filename(ext));
@@ -387,34 +395,16 @@ fn save_code(code: &str, author: UserId, ext: &str) -> Result<PathBuf, Error> {
     }
     fs::write(path.as_path(), code)?;
 
-    if ::is_running_as_docker_container() {
-        let _ = cmd!("chown", "dev", path.as_path()).run();
-    }
+    //if ::is_running_as_docker_container() {
+    //    let _ = cmd!("chown", "dev", path.as_path()).run();
+    //}
 
     Ok(path)
 }
 
-fn run_command(path: &PathBuf, cmd: Expression, timeout: u64) -> Result<CommandResult, Error> {
-    let dir = path.parent().unwrap();
-    let cmd = cmd.dir(dir).env_remove("RUST_LOG").unchecked();
-    let res = run_with_timeout(timeout, cmd)?;
-
-    Ok(res)
-}
-
-#[cfg_attr(not(unix), allow(unused_mut))]
-fn run_with_timeout(timeout: u64, mut cmd: ::duct::Expression) -> Result<CommandResult, Error> {
-    #[cfg(unix)]
-    {
-        if ::is_running_as_docker_container() {
-            use std::os::unix::process::CommandExt;
-            cmd = cmd.before_spawn(|cmd| {
-                cmd.uid(1000);
-                Ok(())
-            });
-        }
-    }
+fn run_command(cmd: Expression, timeout: u64) -> Result<CommandResult, Error> {
     let child = cmd
+        .unchecked() // important! allows us to get stderr instead of an `Error` if the process exits with a non-zero exit code
         .stdout_capture()
         .stderr_capture()
         .start()?;
@@ -423,12 +413,11 @@ fn run_with_timeout(timeout: u64, mut cmd: ::duct::Expression) -> Result<Command
     let start = Instant::now();
 
     loop {
-        match child.try_wait() {
-            Ok(Some(_)) => {
+        match child.try_wait()? {
+            Some(_) => {
                 break;
             },
-            Ok(None) => {},
-            Err(e) => return Err(e),
+            None => {},
         };
 
         if start.elapsed() >= timeout {

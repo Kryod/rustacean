@@ -2,7 +2,6 @@ use LangManager;
 
 #[allow(dead_code)]
 fn test_lang(code: &str, lang: &str, ret_code: i32, ignore_compil_stdout: bool, ret_str: &str) {
-    println!("testing lang");
     let mut lang_manager = LangManager::new();
     let languages = lang_manager.get_languages().clone();
     for (_codes, boxed_lang) in languages {
@@ -11,8 +10,7 @@ fn test_lang(code: &str, lang: &str, ret_code: i32, ignore_compil_stdout: bool, 
     let user = serenity::model::id::UserId::from(123456u64);
 
     let lang = ::commands::exec::get_lang(&lang_manager, lang).unwrap();
-    let res = ::commands::exec::run_code(code.into(), lang, user);
-    ::commands::exec::cleanup_user_snippet_directory(user).unwrap();
+    let res = ::commands::exec::run_code(None, None, code.into(), lang, user);
     let (compilation, execution, _, _) = res.unwrap();
 
     if compilation.timed_out {

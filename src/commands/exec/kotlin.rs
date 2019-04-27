@@ -21,6 +21,10 @@ impl Kotlin {
 }
 
 impl Language for Kotlin {
+    fn get_image_name(&self) -> String {
+        "rustacean-kotlin".into()
+    }
+    
     fn get_lang_name(&self) -> String {
         "Kotlin".into()
     }
@@ -45,12 +49,12 @@ impl Language for Kotlin {
         PathBuf::from(self.get_class_name(src_path))
     }
 
-    fn get_compiler_command(&self, src_path: &PathBuf, _exe_path: &PathBuf) -> Option<Expression> {
-        Some(cmd!(self.get_compiler(), src_path, "-include-runtime", "-d", format!("{}.jar", self.get_class_name(src_path))))
+    fn get_compiler_command(&self, src_path: &PathBuf, _exe_path: &PathBuf) -> Option<String> {
+        Some(format!("{} {} -include-runtime -d {}.jar", self.get_compiler(), src_path.to_str().unwrap(), self.get_class_name(src_path)))
     }
 
-    fn get_execution_command(&self, path: &PathBuf) -> Expression {
-        cmd!("java", "-jar", format!("{}.jar", path.to_str().unwrap()))
+    fn get_execution_command(&self, path: &PathBuf) -> String {
+        format!("java -jar {}.jar", path.to_str().unwrap())
     }
 
     fn check_compiler_or_interpreter(&self) -> Expression {

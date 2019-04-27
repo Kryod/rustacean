@@ -17,6 +17,10 @@ impl Lua {
 }
 
 impl Language for Lua {
+    fn get_image_name(&self) -> String {
+        "rustacean-lua".into()
+    }
+    
     fn get_lang_name(&self) -> String {
         "Lua".into()
     }
@@ -25,8 +29,8 @@ impl Language for Lua {
         ".lua".into()
     }
 
-    fn get_execution_command(&self, path: &PathBuf) -> Expression {
-        cmd!(self.get_interpreter(), path)
+    fn get_execution_command(&self, path: &PathBuf) -> String {
+        format!("{} {}", self.get_interpreter(), path.to_str().unwrap())
     }
 
     fn check_compiler_or_interpreter(&self) -> Expression {

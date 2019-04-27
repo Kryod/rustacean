@@ -13,6 +13,10 @@ impl Java {
 }
 
 impl Language for Java {
+    fn get_image_name(&self) -> String {
+        "rustacean-java".into()
+    }
+
     fn get_lang_name(&self) -> String {
         "Java".into()
     }
@@ -44,12 +48,12 @@ public class {} {{
         PathBuf::from(self.get_class_name(src_path))
     }
 
-    fn get_compiler_command(&self, src_path: &PathBuf, _exe_path: &PathBuf) -> Option<Expression> {
-        Some(cmd!("javac", src_path))
+    fn get_compiler_command(&self, src_path: &PathBuf, _exe_path: &PathBuf) -> Option<String> {
+        Some(format!("javac {}", src_path.to_str().unwrap()))
     }
 
-    fn get_execution_command(&self, path: &PathBuf) -> Expression {
-        cmd!("java", path)
+    fn get_execution_command(&self, path: &PathBuf) -> String {
+        format!("java {}", path.to_str().unwrap())
     }
 
     fn check_compiler_or_interpreter(&self) -> Expression {
