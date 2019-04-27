@@ -64,7 +64,7 @@ struct Settings {
     pub webhook_frequency: Option<u64>,
     pub webhook_role: Option<String>,
     pub cpu_load: String,
-    pub ram_load: String
+    pub ram_load: String,
 }
 
 impl Key for Settings {

@@ -99,7 +99,7 @@ pub fn get_lang(lang_manager: &LangManager, lang_code: &str) -> Result<BoxedLang
     }
 }
 
-pub fn run_code(cpu_load: String, ram_load: String, mut code: String, lang: BoxedLang, author: UserId) -> Result<(CommandResult, CommandResult, String, String), Error> {
+pub fn run_code(cpu_load: Option<&str>, ram_load: Option<&str>, mut code: String, lang: BoxedLang, author: UserId) -> Result<(CommandResult, CommandResult, String, String), Error> {
     let src_path = match save_code(&code, author, &lang.get_source_file_ext()) {
         Ok(path) => path,
         Err(e) => {
@@ -123,7 +123,7 @@ pub fn run_code(cpu_load: String, ram_load: String, mut code: String, lang: Boxe
     let out_path = lang.get_out_path(&path_in_container);
 
     // Start container
-    let cmd = cmd!("docker", "run", "--network=none", "--cpus", cpu_load, "--memory", ram_load, "-t", "-d", image);
+    let cmd = cmd!("docker", "run", "--network=none", "--cpus", cpu_load.unwrap_or("0.000"), "--memory", ram_load.unwrap_or("0"), "-t", "-d", image);
     let container_id = cmd.stdout_capture().read()?;
     let cleanup = || {
         let _ = fs::remove_file(&src_path);
@@ -267,7 +267,7 @@ command!(exec(ctx, msg, _args) {
                 Err(e) => warn!("Could not save snippet to db: {}", e),
             };
         }
-        match run_code(cpu_load, ram_load, code, lang, msg.author.id) {
+        match run_code(Some(&cpu_load), Some(&ram_load), code, lang, msg.author.id) {
             Ok((c, e, _processed_code, l)) => {
                 (c, e, l)
             },

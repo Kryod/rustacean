@@ -10,7 +10,7 @@ fn test_lang(code: &str, lang: &str, ret_code: i32, ignore_compil_stdout: bool, 
     let user = serenity::model::id::UserId::from(123456u64);
 
     let lang = ::commands::exec::get_lang(&lang_manager, lang).unwrap();
-    let res = ::commands::exec::run_code(String::from("0.20"), String::from("250m"), code.into(), lang, user);
+    let res = ::commands::exec::run_code(None, None, code.into(), lang, user);
     let (compilation, execution, _, _) = res.unwrap();
 
     if compilation.timed_out {
