@@ -448,9 +448,6 @@ fn main() {
                 .desc("Get an invite link to add Rustacean to other servers."))
             .command("exec", |c| c
                 .cmd(commands::exec::exec)
-                .after(|_ctx: &mut Context, msg: &Message, _res: &Result<(), serenity::framework::standard::CommandError>| {
-                    let _ = commands::exec::cleanup_user_snippet_directory(msg.author.id);
-                })
                 .batch_known_as(["execute", "run", "code"].iter())
                 .desc(&format!("Executes a code snippet. Your message needs to look like this:\r\n{}exec\r\n\\`\\`\\`language\r\n\r\ncode...\r\n\\`\\`\\`\r\nwhere `language` is the language of your choice.\r\nFor example:\r\n{}exec\r\n\\`\\`\\`javascript\r\nconsole.log(\"hi!\");\r\n\\`\\`\\`", command_prefix, command_prefix))
                 .bucket("exec_bucket"))
