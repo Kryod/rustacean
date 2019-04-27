@@ -11,7 +11,7 @@ log_level_term = "Info"
 log_level_file = "Debug"
 
 # The maximum load per container launch (for 1 core) from 0 to 1 (for multiple core you can go up to the nomber of cores you have)
-cpu_load = "0.10"
+cpu_load = "0.80"
 # The maximum RAM used by a single container (m for MB and g for GB according to the docker documentation)
 memory_load = "250m"
 
