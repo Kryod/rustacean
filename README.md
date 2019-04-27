@@ -47,21 +47,19 @@ printf("Oh hi Discord!");
 
 [prerequisites on macOS](readme/macos.md)
 
-### How does it works
+### How does it work
 
-The bot is supposed to run on a container (recommended), it will save all code it receive with the `exec` command in a folder `snippets/{userid}`.  
-Then the bot will spawn a container with an image corresponding to the language tha tis supposed to be executed, for example, when executing C code it will launch a container with the rustacean-c image (specially build using an image for that language) and then exec the code.  
+The bot is supposed to run on a Docker container (recommended), it will save all code it receives with the `exec` command in a folder `snippets/{userid}`.  
+Then the bot will spawn a container with an image corresponding to the language that is supposed to be executed. For example, when executing C code it will launch a container with the rustacean-c image (using a custom-built image for that language) and then execute the given code.  
 
-For security purposes, containers will have their ability restrained (not the main container), they will have no connection to the internet, they will have limited ressources (ram and cpu usage defined in the config file) and after 10sec the container will be killed and deleted (to prevent infinite loop and save space on hard drive).  
-For each language there is a corresponding docker image that has all the necessary dependancies(makes us able to add specific dependancies without granting access to the internet).  
-When launching the bot all the images will be build, so you must have enough space (the bot will automatically prune all unnecessary images after it build everything).
+For security purposes, containers will have their ability restrained (not on the main container), they will have no connection to the internet, they will have limited ressources (RAM and CPU usage defined in the config file) and after 10 seconds of code execution the container will be killed and deleted (to prevent infinite loops and to save space on hard drive).  
+For each language there is a corresponding Docker image that has all the necessary dependencies (enables us to add specific dependencies without granting access to the internet).  
+When launching the bot all the images will be built, so you must have enough disk space (the bot will automatically prune all unnecessary images after having built everything).
 
 
 ### Installing
 
-⚠️ It is recommended to **[run Rustacean as a Docker container](readme/docker.md)** instead of directly on your machine, otherwise **users will be able to access and alter your file system**.
-
-Docker is **required** for running the bot (it will spawn container). So you need to install docker.
+Docker is **required** for running the bot (it will spawn container). So you need to install Docker.
 
 For Linux:
 ```sh
@@ -99,19 +97,19 @@ You can also [run Rustacean as a Docker container](readme/docker.md).
 
 ### Adding a language
 
-You can do an issue and hope we will have the time to do it, do a pull request or add it yourself on your fork.
+You can do an issue and hope we will have the time to work on it, make a pull request or add it yourself on your fork.
 
-In the two later choices you need to do this:
+In the two latter choices you need to do this:
 
-First you must make a Docker image in the folder `images` following this synthax `Dockerfile.{language}`.
+First you need to make a Docker image in the `images` directory following this naming syntax: `Dockerfile.{language}`.
 If code runs on your image then the bot will be able to use it.
 
-Then you need to make a rust file in `src/commands/exec` named `{language}.rs`.  
+Then you need to make a Rust source file in `src/commands/exec` named `{language}.rs`.  
 You can copy another file from the same folder, the architecture is pretty much the same.  
-Take a look at `language.rs`, it will be the trait that is implemented by your language struct.  
-In the `get_image_name()` function you must put the name of the image that will be build, must be like `rustacean-{language}`.  
+Take a look at `language.rs`, it contains the trait that will be implemented by your language struct.  
+In the `get_image_name()` function you must put the name of the image that will be built, must be like `rustacean-{language}`.  
 Everything else is self-explanatory, if your language is interpreted then you need to tell what the interpreter is, if you have a special command for the execution you have to specify it in `get_execution_command()`...  
-One thing to note is that you must have the exact name between the image name after the `-` (`rustacean-{language}`), the Dockerfile extension (`Dockerfile.{language}`) and the name in the function `get_lang_name`.
+One thing to note is that you must have the exact name between the image name after the "`-`" (`rustacean-{language}`), the Dockerfile extension (`Dockerfile.{language}`) and the name in the function `get_lang_name()`.
 
 After your file is done, you need to add it in `mod.rs` in the same folder by adding the following lines:
 ```rust
@@ -120,7 +118,7 @@ pub use self::{language}::{language};
 ```
 
 Now you need to add the names used in the `~exec` command that will invoke the language.
-This happen in `src/lang_manager.rs`, add the following line:
+In `src/lang_manager.rs`, add the following line:
 ```rust
  mngr.languages.insert(vec![
     "invocation_name_1".into(),
@@ -129,7 +127,7 @@ This happen in `src/lang_manager.rs`, add the following line:
 ```
 
 And now you are done. But if you want your pull request to be merged you need to add a test for your language, it is in the `src/test.rs` file.
-After your PR is validated by travis we will happilly merge it.
+After your PR is validated by Travis we will happily merge it.
 
 [guild]: https://discord.gg/2qjtv2H
 [guild-badge]: https://img.shields.io/discord/509055716305141780.svg?style=flat-square&colorB=7289DA
