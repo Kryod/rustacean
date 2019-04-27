@@ -119,7 +119,7 @@ pub fn get_lang(lang_manager: &LangManager, lang_code: &str) -> Result<BoxedLang
     }
 }
 
-pub fn run_code(mut code: String, lang: BoxedLang, author: UserId) -> Result<(CommandResult, CommandResult, String, String), Error> {
+pub fn run_code(cpu_load: String, ram_load: String, mut code: String, lang: BoxedLang, author: UserId) -> Result<(CommandResult, CommandResult, String, String), Error> {
     let src_path = match save_code(&code, author, &lang.get_source_file_ext()) {
         Ok(path) => path,
         Err(e) => {
@@ -143,7 +143,7 @@ pub fn run_code(mut code: String, lang: BoxedLang, author: UserId) -> Result<(Co
     let out_path = lang.get_out_path(&path_in_container);
 
     // Start container
-    let cmd = cmd!("docker", "run", "--network=none", "-t", "-d", image);
+    let cmd = cmd!("docker", "run", "--network=none", "--cpus", cpu_load, "--memory", ram_load, "-t", "-d", image);
     let container_id = cmd.stdout_capture().read()?;
     let delete_container = || {
         let _ = cmd!("docker", "kill", &container_id).stdout_capture().stderr_capture().run();
@@ -230,9 +230,12 @@ command!(exec(ctx, msg, _args) {
     let arg = msg.content.clone();
     let split = arg.split("```");
     let data = ctx.data.lock();
-    let command_prefix = {
-        data.get::<::Settings>().unwrap().lock().unwrap().command_prefix.clone()
+    let (command_prefix, cpu_load, ram_load) = {
+        (data.get::<::Settings>().unwrap().lock().unwrap().command_prefix.clone(),
+        data.get::<::Settings>().unwrap().lock().unwrap().cpu_load.clone(),
+        data.get::<::Settings>().unwrap().lock().unwrap().ram_load.clone())
     };
+
     let langs = data.get::<::LangManager>().unwrap().lock().unwrap().get_languages_list();
     drop(data);
 
@@ -281,7 +284,7 @@ command!(exec(ctx, msg, _args) {
                 Err(e) => warn!("Could not save snippet to db: {}", e),
             };
         }
-        match run_code(code, lang, msg.author.id) {
+        match run_code(cpu_load, ram_load, code, lang, msg.author.id) {
             Ok((c, e, _processed_code, l)) => {
                 (c, e, l)
             },
