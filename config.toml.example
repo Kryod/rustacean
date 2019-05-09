@@ -9,6 +9,7 @@ bot_owners = [
 # Declares the level of logging to use. Read the documentation for the `log` crate for more information.
 log_level_term = "Info"
 log_level_file = "Debug"
+log_file = "rustacean.log"
 
 # The maximum load per container launch (for 1 core) from 0 to 1 (for multiple core you can go up to the nomber of cores you have)
 cpu_load = "0.80"

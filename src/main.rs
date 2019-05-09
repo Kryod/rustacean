@@ -19,6 +19,7 @@ pub mod tools;
 pub mod schema;
 pub mod models;
 pub mod dbl;
+pub mod file_logger;
 mod test;
 
 use lang_manager::LangManager;
@@ -57,6 +58,7 @@ struct Settings {
     pub command_prefix: String,
     pub log_level_term: String,
     pub log_level_file: String,
+    pub log_file: String,
     pub db_connection_pool_size: u32,
     pub bot_owners: Vec<serenity::model::prelude::UserId>,
     pub webhook_id: Option<u64>,
@@ -324,7 +326,7 @@ fn init_settings() -> Settings {
 }
 
 fn init_logging(settings: &Settings) {
-    use simplelog::{ CombinedLogger, Config, LevelFilter, TermLogger, WriteLogger };
+    use simplelog::{ CombinedLogger, Config, LevelFilter, TermLogger };
 
     let mut config = Config::default();
     config.time_format = Some("[%Y-%m-%d %H:%M:%S]");
@@ -332,12 +334,10 @@ fn init_logging(settings: &Settings) {
     let log_level_term = LevelFilter::from_str(settings.log_level_term.as_ref()).expect("Invalid log level filter");
     let log_level_file = LevelFilter::from_str(settings.log_level_file.as_ref()).expect("Invalid log level filter");
 
-    let log_file = std::fs::File::create("rustacean.log").expect("Could not create log file");
-
     CombinedLogger::init(
         vec![
             TermLogger::new(log_level_term, config).unwrap(),
-            WriteLogger::new(log_level_file, config, log_file),
+            Box::new(file_logger::FileLogger::new(&settings.log_file, log_level_file)),
         ]
     ).unwrap();
 }
