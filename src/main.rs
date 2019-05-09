@@ -85,10 +85,8 @@ impl EventHandler for Handler {
                 0 => {
                     info!("Connected as {}", ready.user.name);
                     info!("Open this link in a web browser to invite {} to a Discord server:\r\nhttps://discordapp.com/oauth2/authorize?client_id={}&scope=bot&permissions=378944", ready.user.name, ready.user.id);
-                }
+                },
                 1 => presence_status_thread(ready.user.id, ctx),
-                2 => cargo_test_thread(ctx),
-                3 => snippets_cleanup_thread(),
                 _ => { },
             };
 
@@ -145,16 +143,13 @@ fn presence_status_thread(user_id: UserId, ctx: Arc<Mutex<Context>>) {
     });
 }
 
-fn cargo_test_thread(ctx: Arc<Mutex<Context>>) {
+fn cargo_test_thread(settings: Settings) {
     let (webhook_id, webhook_token, webhook_freq, webhook_role) = {
-        let ctx_lock = ctx.lock().unwrap();
-        let data = ctx_lock.data.lock();
-        let settings = data.get::<Settings>().unwrap().lock().unwrap();
         (
-            settings.webhook_id.clone(),
-            settings.webhook_token.clone(),
-            settings.webhook_frequency.clone(),
-            settings.webhook_role.clone(),
+            settings.webhook_id,
+            settings.webhook_token,
+            settings.webhook_frequency,
+            settings.webhook_role,
         )
     };
 
@@ -512,6 +507,9 @@ fn main() {
         }
     });
 
+    snippets_cleanup_thread();
+    cargo_test_thread(init_settings());
+
     if let Err(why) = client.start_shards(4) {
         error!("Client error: {:?}", why);
     }
@@ -543,7 +541,3 @@ fn set_game_presence(ctx: &Context, game_name: &str) {
     let status = serenity::model::user::OnlineStatus::Online;
     ctx.set_presence(Some(game), status);
 }
-
-//fn is_running_as_docker_container() -> bool {
-//    !std::env::var("DOCKER_ENV").is_err()
-//}
