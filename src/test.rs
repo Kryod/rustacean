@@ -10,7 +10,7 @@ fn test_lang(code: &str, lang: &str, ret_code: i32, ignore_compil_stdout: bool, 
     let user = serenity::model::id::UserId::from(123456u64);
 
     let lang = ::commands::exec::get_lang(&lang_manager, lang).unwrap();
-    let res = ::commands::exec::run_code(None, None, code.into(), lang, user);
+    let res = ::commands::exec::run_code(None, None, code.into(), lang, user, None);
     let (compilation, execution, _, _) = res.unwrap();
 
     if compilation.timed_out {
@@ -165,10 +165,4 @@ fn test_vb() {
 fn test_kotlin() {
     test_lang("print(\"test\")", "kt", 0, false, "test");
     test_lang("fun main(args: Array<String>) {\nprint(\"test\")\n}", "kt", 0, false, "test");
-}
-
-#[test]
-#[cfg(ignore)]
-fn test_env() {
-    assert_eq!(true, ::is_running_as_docker_container());
 }

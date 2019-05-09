@@ -7,7 +7,10 @@ use std::io::{ Error, ErrorKind };
 use std::time::{ Instant, Duration };
 
 use duct::{ cmd, Expression };
-use serenity::model::id::UserId;
+use serenity::model::{
+    id::UserId,
+    channel::Message,
+};
 use rand::distributions::Alphanumeric;
 
 use lang_manager::LangManager;
@@ -99,14 +102,25 @@ pub fn get_lang(lang_manager: &LangManager, lang_code: &str) -> Result<BoxedLang
     }
 }
 
-pub fn run_code(cpu_load: Option<&str>, ram_load: Option<&str>, mut code: String, lang: BoxedLang, author: UserId) -> Result<(CommandResult, CommandResult, String, String), Error> {
+pub fn run_code(cpu_load: Option<&str>, ram_load: Option<&str>, mut code: String, lang: BoxedLang, author: UserId, mut reply: Option<&mut Message>) -> Result<(CommandResult, CommandResult, String, String), Error> {
+    let mut append_to_reply_msg = |text: &str| {
+        match reply {
+            Some(ref mut reply) => {
+                let new_content = format!("{}\n{}", reply.content, text);
+                let _ = reply.edit(|m| m.content(new_content));
+            },
+            None => { },
+        };
+    };
+    append_to_reply_msg("Saving code...");
     let src_path = match save_code(&code, author, &lang.get_source_file_ext()) {
         Ok(path) => path,
         Err(e) => {
             return Err(Error::new(ErrorKind::Other, format!("An error occurred: {}", e)));
         },
     };
-    info!("Saving {} code in {}...", lang.get_lang_name(), src_path.to_str().unwrap());
+    info!("Saved {} code in {}.", lang.get_lang_name(), src_path.to_str().unwrap());
+
     code = pre_process_code(code);
     if let Some(modified) = lang.pre_process_code(&code, &src_path) {
         match fs::write(src_path.as_path(), &modified) {
@@ -123,6 +137,7 @@ pub fn run_code(cpu_load: Option<&str>, ram_load: Option<&str>, mut code: String
     let out_path = lang.get_out_path(&path_in_container);
 
     // Start container
+    append_to_reply_msg("Starting session...");
     let cmd = cmd!("docker", "run", "--network=none", "--cpus", cpu_load.unwrap_or("0.000"), "--memory", ram_load.unwrap_or("0"), "-t", "-d", image);
     let container_id = cmd.stdout_capture().read()?;
     let cleanup = || {
@@ -132,6 +147,7 @@ pub fn run_code(cpu_load: Option<&str>, ram_load: Option<&str>, mut code: String
     };
 
     // Copy source file to container
+    append_to_reply_msg("Copying code snippet...");
     let cmd = cmd!("docker", "cp", src_path.to_str().unwrap(), format!("{}:{}", container_id, path_in_container.to_str().unwrap()));
     match cmd.run() {
         Ok(_) => { },
@@ -144,6 +160,7 @@ pub fn run_code(cpu_load: Option<&str>, ram_load: Option<&str>, mut code: String
     // Compile code if necessary
     let compilation: Result<CommandResult, Error> = match lang.get_compiler_command(&path_in_container, &out_path) {
         Some(command) => {
+            append_to_reply_msg("Compiling code snippet...");
             let commands = command.split("&&").map(|command| command.trim());
             let mut res = Ok(CommandResult::default());
             info!("Compiling {} code", lang.get_lang_name());
@@ -187,6 +204,7 @@ pub fn run_code(cpu_load: Option<&str>, ram_load: Option<&str>, mut code: String
         },
         _ => {
             // Compilation succeeded, run the snippet
+            append_to_reply_msg("Running code snippet...");
             info!("Executing {} code", lang.get_lang_name());
             let exec_command = lang.get_execution_command(&out_path);
             let mut args = vec!["exec", "-w", "/home", &container_id];
@@ -243,6 +261,7 @@ command!(exec(ctx, msg, _args) {
         },
     };
 
+    let mut reply_msg: Message;
     let (mut compilation, mut execution, lang) = {
         let lang = {
             // We make sure to lock the data in a separate code block,
@@ -267,7 +286,15 @@ command!(exec(ctx, msg, _args) {
                 Err(e) => warn!("Could not save snippet to db: {}", e),
             };
         }
-        match run_code(Some(&cpu_load), Some(&ram_load), code, lang, msg.author.id) {
+
+        reply_msg = match msg.channel_id.say(format!("<@{}>,", msg.author.id)) {
+            Err(e) => {
+                error!("An error occured while replying to an exec query: {}", e);
+                return Ok(());
+            },
+            Ok(msg) => msg,
+        };
+        match run_code(Some(&cpu_load), Some(&ram_load), code, lang, msg.author.id, Some(&mut reply_msg)) {
             Ok((c, e, _processed_code, l)) => {
                 (c, e, l)
             },
@@ -291,6 +318,7 @@ command!(exec(ctx, msg, _args) {
         reply = format!("{}\n:x: Execution timed out", reply);
     } else {
         // Didn't time out
+        reply = format!("{}\nLanguage: {}", reply, lang);
         match compilation.exit_code {
             Some(code) if code != 0 => {
                 // Compilation failed
@@ -332,8 +360,8 @@ command!(exec(ctx, msg, _args) {
         if reply.len() == max_msg_len - 3 {
             reply.push_str("```");
         }
-        if let Err(e) = msg.channel_id.say(&reply) {
-            error!("An error occured while replying to an exec query: {}", e);
+        if let Err(e) = reply_msg.edit(|m| m.content(reply)) {
+            error!("An error occured while editing a reply to an exec query: {}", e);
             return Ok(());
         }
     } else {
@@ -377,9 +405,6 @@ pub fn get_snippets_directory_for_user(user: UserId) -> Result<PathBuf, Error> {
     if !dir.exists() {
         fs::create_dir_all(dir.as_path())?;
     }
-    //if ::is_running_as_docker_container() {
-    //    cmd!("chown", "dev", &dir).run()?;
-    //}
 
     Ok(dir)
 }
@@ -394,10 +419,6 @@ fn save_code(code: &str, author: UserId, ext: &str) -> Result<PathBuf, Error> {
         }
     }
     fs::write(path.as_path(), code)?;
-
-    //if ::is_running_as_docker_container() {
-    //    let _ = cmd!("chown", "dev", path.as_path()).run();
-    //}
 
     Ok(path)
 }
