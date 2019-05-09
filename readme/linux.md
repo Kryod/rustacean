@@ -2,7 +2,7 @@
 
 ```bash
 $ sudo apt-get update -y
-$ sudo apt-get install -y gcc curl libssl-dev libsqlite3-dev
+$ sudo apt-get install -y gcc curl libssl-dev libsqlite3-dev docker.io
 $ curl https://sh.rustup.rs -sSf | sh
 ```
 Press "1" and then hit Enter.
@@ -11,55 +11,4 @@ Wait for the installation to end, and then run
 ```bash
 $ source $HOME/.cargo/env
 $ cargo install diesel_cli --no-default-features --features "sqlite"
-```
-
-### Languages
-
-You can support different optional languages:
-
-#### C++
-
-```bash
-$ sudo apt-get install -y g++
-```
-
-#### PHP
-
-```bash
-$ sudo apt-get install -y php
-```
-
-#### Python
-
-```bash
-$ sudo apt-get install -y python3
-```
-
-#### JavaScript
-
-```bash
-$ sudo apt-get install -y nodejs
-```
-
-#### C#
-
-```bash
-$ sudo apt-get install -y mono-devel
-```
-
-#### Java
-
-```bash
-$ sudo apt-get install -y default-jdk
-```
-
-#### Lua
-
-```bash
-$ sudo apt-get install -y lua5.3 lua-socket lua-sec
-```
-
-#### x86 && x64 Assembly
-```bash
-$ sudo apt-get install -y nasm
 ```
