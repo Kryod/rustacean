@@ -4,7 +4,7 @@ rust:
 
 before_install:
   - curl -sSL https://get.docker.com/ | sh
-  - docker build -t rustacean -f Dockerfile.test .
+  - docker build -t kryod/rustacean-test -f Dockerfile.test .
   - cargo run build-images
 
 script:
@@ -14,6 +14,10 @@ after_success:
   - wget https://raw.githubusercontent.com/DiscordHooks/travis-ci-discord-webhook/master/send.sh
   - chmod +x send.sh
   - ./send.sh success $WEBHOOK_URL
+  - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+  - docker push kryod/rustacean-test
+  - docker build -t kryod/rustacean -f Dockerfile .
+  - docker push kryod/rustacean
 after_failure:
   - wget https://raw.githubusercontent.com/DiscordHooks/travis-ci-discord-webhook/master/send.sh
   - chmod +x send.sh
