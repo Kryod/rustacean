@@ -8,7 +8,7 @@ before_install:
   - cargo run build-images
 
 script:
-  - docker run -v /var/run/docker.sock:/var/run/docker.sock rustacean /bin/sh -c "cargo test"
+  - docker run -v /var/run/docker.sock:/var/run/docker.sock kryod/rustacean-test /bin/sh -c "cargo test"
 
 after_success:
   - wget https://raw.githubusercontent.com/DiscordHooks/travis-ci-discord-webhook/master/send.sh
