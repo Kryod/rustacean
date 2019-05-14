@@ -510,7 +510,7 @@ fn main() {
     snippets_cleanup_thread();
     cargo_test_thread(init_settings());
 
-    if let Err(why) = client.start_shards(4) {
+    if let Err(why) = client.start_shards(2) {
         error!("Client error: {:?}", why);
     }
 }

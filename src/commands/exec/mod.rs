@@ -138,7 +138,7 @@ pub fn run_code(cpu_load: Option<&str>, ram_load: Option<&str>, mut code: String
 
     // Start container
     append_to_reply_msg("Starting session...");
-    let cmd = cmd!("docker", "run", "--network=none", "--cpus", cpu_load.unwrap_or("0.000"), "--memory", ram_load.unwrap_or("0"), "-t", "-d", image);
+    let cmd = cmd!("docker", "run", "--network=none", "--kernel-memory", "20m", "--cpus", cpu_load.unwrap_or("0.000"), "--memory", ram_load.unwrap_or("0"), "-t", "-d", image);
     let container_id = cmd.stdout_capture().read()?;
     let cleanup = || {
         let _ = fs::remove_file(&src_path);
