@@ -68,6 +68,7 @@ pub struct CommandResult {
     pub stdout: String,
     pub stderr: String,
     pub timed_out: bool,
+    pub duration: Duration,
 }
 
 fn pre_process_code(mut code: String) -> String {
@@ -220,6 +221,7 @@ pub fn run_code(cpu_load: Option<&str>, ram_load: Option<&str>, mut code: String
         }
     };
 
+    append_to_reply_msg("Closing session...");
     cleanup();
     Ok((compilation, execution, code, lang.get_lang_name()))
 }
@@ -305,45 +307,10 @@ command!(exec(ctx, msg, _args) {
         }
     };
 
-    let mut reply = String::new();
     compilation.stderr = pre_process_output(compilation.stderr);
     compilation.stdout = pre_process_output(compilation.stdout);
     execution.stderr = pre_process_output(execution.stderr);
     execution.stdout = pre_process_output(execution.stdout);
-    if compilation.timed_out {
-        // Compilation timed out
-        reply = format!("{}\n:x: Compilation timed out", reply);
-    } else if execution.timed_out {
-        // Execution timed out
-        reply = format!("{}\n:x: Execution timed out", reply);
-    } else {
-        // Didn't time out
-        reply = format!("{}\nLanguage: {}", reply, lang);
-        match compilation.exit_code {
-            Some(code) if code != 0 => {
-                // Compilation failed
-                reply = format!("{}\n:x: Compilation failed: ```\n{}```", reply, compilation.stderr);
-            },
-            _ => {
-                // Compilation succeeded
-                if !compilation.stdout.is_empty() {
-                    reply = format!("{}\nCompilation output: ```\n{}```", reply, compilation.stdout);
-                }
-                if !compilation.stderr.is_empty() {
-                    reply = format!("{}\nCompilation error output: ```\n{}```", reply, compilation.stderr);
-                }
-                if let Some(code) = execution.exit_code {
-                    reply = format!("{}\nExit code: {}", reply, code);
-                }
-                if !execution.stdout.is_empty() {
-                    reply = format!("{}\nStandard output: ```\n{}```", reply, execution.stdout);
-                }
-                if !execution.stderr.is_empty() {
-                    reply = format!("{}\nError output: ```\n{}```", reply, execution.stderr);
-                }
-            }
-        };
-    }
 
     {
         let data = ctx.data.lock();
@@ -352,24 +319,100 @@ command!(exec(ctx, msg, _args) {
         stat.increment_snippets_count(db);
     }
 
-    if !reply.is_empty() {
-        let header = format!("<@{}>,", msg.author.id);
-        let max_msg_len = 2000;
-        reply = format!("{}{}", header, reply);
-        reply.truncate(max_msg_len - 3);
-        if reply.len() == max_msg_len - 3 {
-            reply.push_str("```");
+    let header = format!("<@{}>,", msg.author.id);
+    if let Err(why) = reply_msg.edit(|m| m.content(header).embed(|mut e| {
+        let mut fields_lang = vec![("Language", lang, true)];
+        let mut fields_out = Vec::<(&str, String, bool)>::new();
+        let mut color_red = false;
+
+        let compil_t = (compilation.duration.as_millis() as f32) / 1000.0_f32;
+        let exec_t = (execution.duration.as_millis() as f32) / 1000.0_f32;
+        let mut fields_time = Vec::<(&str, String, bool)>::new();
+        if compil_t > 0.0001 {
+            fields_time.push(("Compilation time", format!("{:.1}s", compil_t), true));
         }
-        if let Err(e) = reply_msg.edit(|m| m.content(reply)) {
-            error!("An error occured while editing a reply to an exec query: {}", e);
-            return Ok(());
+        if exec_t > 0.0001 {
+            fields_time.push(("Execution time", format!("{:.1}s", exec_t), true));
         }
-    } else {
-        debug!("Output is empty");
+
+        if compilation.timed_out {
+            // Compilation timed out
+            e = e.description(":x: Compilation timed out")
+                 .colour(serenity::utils::Colour::RED);
+            color_red = true;
+        }
+        if execution.timed_out {
+            // Execution timed out
+            e = e.description(":x: Execution timed out")
+                 .colour(serenity::utils::Colour::RED);
+            color_red = true;
+        }
+        match compilation.exit_code {
+            Some(code) if code != 0 => {
+                // Compilation failed
+                e = e.description(":x: Compilation failed")
+                        .colour(serenity::utils::Colour::RED);
+
+                let out = format!("```\n{}```", truncate_code_output(compilation.stderr, 1024));
+                fields_out.push(("Compilation error output", out, false));
+            },
+            _ => {
+                // Compilation succeeded
+                if !color_red {
+                    e = e.colour(serenity::utils::Colour::DARK_GREEN);
+                }
+
+                if !compilation.stdout.is_empty() {
+                    let out = format!("```\n{}```", truncate_code_output(compilation.stdout, 1024));
+                    fields_out.push(("Compilation output", out, false));
+                }
+                if !compilation.stderr.is_empty() {
+                    if !color_red {
+                        e = e.colour(serenity::utils::Colour::ORANGE);
+                    }
+                    let out = format!("```\n{}```", truncate_code_output(compilation.stderr, 1024));
+                    fields_out.push(("Compilation error output", out, false));
+                }
+                if let Some(code) = execution.exit_code {
+                    fields_lang.push(("Exit code", format!("`{}`", code), true));
+                }
+                if !execution.stdout.is_empty() {
+                    let out = format!("```\n{}```", truncate_code_output(execution.stdout, 1024));
+                    fields_out.push(("Standard output", out, false));
+                }
+                if !execution.stderr.is_empty() {
+                    e = e.colour(serenity::utils::Colour::RED);
+                    let out = format!("```\n{}```", truncate_code_output(execution.stderr, 1024));
+                    fields_out.push(("Error output", out, false));
+                }
+            }
+        };
+
+        e = e.fields(fields_lang)
+             .fields(fields_time);
+        if !fields_out.is_empty() {
+            e = e.fields(fields_out)
+        }
+
+        e.author(|a| a.name(&msg.author.name)
+                      .icon_url(&msg.author.face()))
+         .timestamp(chrono::Utc::now().to_rfc3339())
+    })) {
+        error!("An error occured while editing a reply to an exec query: {:?}", why);
+        return Ok(());
     }
 
     info!("Done");
 });
+
+fn truncate_code_output(text: String, max_length: usize) -> String {
+    let mut ret = text.to_owned();
+    ret.truncate(max_length - 3);
+    if ret.len() == max_length - 3 {
+        ret.push_str("```");
+    }
+    ret
+}
 
 fn get_random_filename(ext: &str) -> String {
     let mut rng = ::rand::thread_rng();
@@ -449,6 +492,7 @@ fn run_command(cmd: Expression, timeout: u64) -> Result<CommandResult, Error> {
                 stdout: "".into(),
                 stderr: "".into(),
                 timed_out: true,
+                duration: start.elapsed(),
             });
         }
 
@@ -469,5 +513,6 @@ fn run_command(cmd: Expression, timeout: u64) -> Result<CommandResult, Error> {
         stdout,
         stderr,
         timed_out: false,
+        duration: start.elapsed(),
     })
 }
