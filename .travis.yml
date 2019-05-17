@@ -14,10 +14,10 @@ after_success:
   - wget https://raw.githubusercontent.com/DiscordHooks/travis-ci-discord-webhook/master/send.sh
   - chmod +x send.sh
   - ./send.sh success $WEBHOOK_URL
-  - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
-  - docker push kryod/rustacean-test
-  - docker build -t kryod/rustacean -f Dockerfile .
-  - docker push kryod/rustacean
+  - |
+      if [[ "$TRAVIS_BRANCH" == "master" ]]; then
+        bash publish_docker.sh
+      fi
 after_failure:
   - wget https://raw.githubusercontent.com/DiscordHooks/travis-ci-discord-webhook/master/send.sh
   - chmod +x send.sh
