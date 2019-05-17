@@ -20,4 +20,8 @@ pub trait Language {
         String::from(path.to_str().unwrap())
     }
     fn check_compiler_or_interpreter(&self) -> Expression;
+    fn get_logo_url(&self) -> String {
+        let name = self.get_lang_name().to_lowercase();
+        format!("https://raw.githubusercontent.com/Kryod/rustacean/master/logos/{}.png", name)
+    }
 }

@@ -296,9 +296,9 @@ command!(exec(ctx, msg, _args) {
             },
             Ok(msg) => msg,
         };
-        match run_code(Some(&cpu_load), Some(&ram_load), code, lang, msg.author.id, Some(&mut reply_msg)) {
-            Ok((c, e, _processed_code, l)) => {
-                (c, e, l)
+        match run_code(Some(&cpu_load), Some(&ram_load), code, lang.clone(), msg.author.id, Some(&mut reply_msg)) {
+            Ok((compilation, execution, _processed_code, _lang_name)) => {
+                (compilation, execution, lang)
             },
             Err(e) => {
                 let _ = msg.reply(&e.to_string());
@@ -315,13 +315,13 @@ command!(exec(ctx, msg, _args) {
     {
         let data = ctx.data.lock();
         let db = data.get::<::DbPool>().unwrap();
-        let mut stat = ::models::LangStat::get(&lang, db);
+        let mut stat = ::models::LangStat::get(&lang.get_lang_name(), db);
         stat.increment_snippets_count(db);
     }
 
     let header = format!("<@{}>,", msg.author.id);
     if let Err(why) = reply_msg.edit(|m| m.content(header).embed(|mut e| {
-        let mut fields_lang = vec![("Language", lang, true)];
+        let mut fields_lang = vec![("Language", lang.get_lang_name(), true)];
         let mut fields_out = Vec::<(&str, String, bool)>::new();
         let mut color_red = false;
 
@@ -397,6 +397,7 @@ command!(exec(ctx, msg, _args) {
         e.author(|a| a.name(&msg.author.name)
                       .icon_url(&msg.author.face()))
          .timestamp(chrono::Utc::now().to_rfc3339())
+         .thumbnail(lang.get_logo_url())
     })) {
         error!("An error occured while editing a reply to an exec query: {:?}", why);
         return Ok(());
