@@ -15,6 +15,10 @@ log_file = "rustacean.log"
 cpu_load = "0.80"
 # The maximum RAM used by a single container (m for MB and g for GB according to the docker documentation)
 ram_load = "250m"
+kernel_memory = "20m"
+
+compilation_timeout = 30
+execution_timeout = 10
 
 db_connection_pool_size = 8
 

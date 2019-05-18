@@ -8,9 +8,10 @@ fn test_lang(code: &str, lang: &str, ret_code: i32, ignore_compil_stdout: bool, 
         lang_manager.set_language_available(boxed_lang.get_lang_name(), true);
     }
     let user = serenity::model::id::UserId::from(123456u64);
+    let settings = get_test_settings();
 
     let lang = ::commands::exec::get_lang(&lang_manager, lang).unwrap();
-    let res = ::commands::exec::run_code(None, None, code.into(), lang, user, None);
+    let res = ::commands::exec::run_code(&settings, code.into(), lang, user, None);
     let (compilation, execution, _, _) = res.unwrap();
 
     if compilation.timed_out {
@@ -46,6 +47,15 @@ fn test_lang(code: &str, lang: &str, ret_code: i32, ignore_compil_stdout: bool, 
             }
         };
     }
+}
+
+fn get_test_settings() -> ::Settings {
+    let mut settings = ::Settings::default();
+    settings.cpu_load = "0.000".into();
+    settings.ram_load = "0".into();
+    settings.kernel_memory = "0".into();
+
+    settings
 }
 
 #[test]

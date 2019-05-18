@@ -103,7 +103,7 @@ pub fn get_lang(lang_manager: &LangManager, lang_code: &str) -> Result<BoxedLang
     }
 }
 
-pub fn run_code(cpu_load: Option<&str>, ram_load: Option<&str>, mut code: String, lang: BoxedLang, author: UserId, mut reply: Option<&mut Message>) -> Result<(CommandResult, CommandResult, String, String), Error> {
+pub fn run_code(settings: &::Settings, mut code: String, lang: BoxedLang, author: UserId, mut reply: Option<&mut Message>) -> Result<(CommandResult, CommandResult, String, String), Error> {
     let mut append_to_reply_msg = |text: &str| {
         match reply {
             Some(ref mut reply) => {
@@ -139,7 +139,7 @@ pub fn run_code(cpu_load: Option<&str>, ram_load: Option<&str>, mut code: String
 
     // Start container
     append_to_reply_msg("Starting session...");
-    let cmd = cmd!("docker", "run", "--network=none", "--kernel-memory", "20m", "--cpus", cpu_load.unwrap_or("0.000"), "--memory", ram_load.unwrap_or("0"), "-t", "-d", image);
+    let cmd = cmd!("docker", "run", "--network=none", "--kernel-memory", &settings.kernel_memory, "--cpus", &settings.cpu_load, "--memory", &settings.ram_load, "-t", "-d", image);
     let container_id = cmd.stdout_capture().read()?;
     let cleanup = || {
         let _ = fs::remove_file(&src_path);
@@ -171,7 +171,7 @@ pub fn run_code(cpu_load: Option<&str>, ram_load: Option<&str>, mut code: String
 
                 let cmd = duct::cmd("docker", args);
 
-                res = match run_command(cmd, 30) {
+                res = match run_command(cmd, settings.compilation_timeout) {
                     Ok(res) => Ok(res),
                     Err(e) => {
                         cleanup();
@@ -198,24 +198,28 @@ pub fn run_code(cpu_load: Option<&str>, ram_load: Option<&str>, mut code: String
     };
 
     // Execute code
-    let execution = match compilation.exit_code {
-        Some(code) if code != 0 => {
-            // Return a default value if compilation failed
-            CommandResult::default()
-        },
-        _ => {
-            // Compilation succeeded, run the snippet
-            append_to_reply_msg("Running code snippet...");
-            info!("Executing {} code", lang.get_lang_name());
-            let exec_command = lang.get_execution_command(&out_path);
-            let mut args = vec!["exec", "-w", "/home", &container_id];
-            exec_command.split(' ').for_each(|part| args.push(part));
-            let cmd = duct::cmd("docker", args);
-            match run_command(cmd, 10) {
-                Ok(res) => res,
-                Err(e) => {
-                    cleanup();
-                    return Err(Error::new(ErrorKind::Other, format!("An error occurred while running code snippet: {}", e)));
+    let execution = if compilation.timed_out {
+        CommandResult::default()
+    } else {
+        match compilation.exit_code {
+            Some(code) if code != 0 => {
+                // Return a default value if compilation failed
+                CommandResult::default()
+            },
+            _ => {
+                // Compilation succeeded, run the snippet
+                append_to_reply_msg("Running code snippet...");
+                info!("Executing {} code", lang.get_lang_name());
+                let exec_command = lang.get_execution_command(&out_path);
+                let mut args = vec!["exec", "-w", "/home", &container_id];
+                exec_command.split(' ').for_each(|part| args.push(part));
+                let cmd = duct::cmd("docker", args);
+                match run_command(cmd, settings.execution_timeout) {
+                    Ok(res) => res,
+                    Err(e) => {
+                        cleanup();
+                        return Err(Error::new(ErrorKind::Other, format!("An error occurred while running code snippet: {}", e)));
+                    }
                 }
             }
         }
@@ -230,20 +234,13 @@ command!(exec(ctx, msg, _args) {
     let arg = msg.content.clone();
     let split = arg.split("```");
     let data = ctx.data.lock();
-    let (command_prefix, cpu_load, ram_load) = {
-        let settings = data.get::<::Settings>().unwrap().lock().unwrap();
-        (
-            settings.command_prefix.clone(),
-            settings.cpu_load.clone(),
-            settings.ram_load.clone(),
-        )
-    };
+    let settings = data.get::<::Settings>().unwrap().lock().unwrap().clone();
 
     let langs = data.get::<::LangManager>().unwrap().lock().unwrap().get_languages_list();
     drop(data);
 
     if split.clone().nth(1).is_none() {
-        let _ = msg.reply(&format!("Please add a code section to your message\nExample:\n{}exec\n\\`\\`\\`language\n**code**\n\\`\\`\\`\nHere are the languages available: {}", command_prefix, langs));
+        let _ = msg.reply(&format!("Please add a code section to your message\nExample:\n{}exec\n\\`\\`\\`language\n**code**\n\\`\\`\\`\nHere are the languages available: {}", settings.command_prefix, langs));
         return Ok(());
     }
     let code = split
@@ -296,7 +293,7 @@ command!(exec(ctx, msg, _args) {
             },
             Ok(msg) => msg,
         };
-        match run_code(Some(&cpu_load), Some(&ram_load), code, lang.clone(), msg.author.id, Some(&mut reply_msg)) {
+        match run_code(&settings, code, lang.clone(), msg.author.id, Some(&mut reply_msg)) {
             Ok((compilation, execution, _processed_code, _lang_name)) => {
                 (compilation, execution, lang)
             },
@@ -467,14 +464,14 @@ fn save_code(code: &str, author: UserId, ext: &str) -> Result<PathBuf, Error> {
     Ok(path)
 }
 
-fn run_command(cmd: Expression, timeout: u64) -> Result<CommandResult, Error> {
+fn run_command(cmd: Expression, timeout_seconds: u64) -> Result<CommandResult, Error> {
     let child = cmd
         .unchecked() // important! allows us to get stderr instead of an `Error` if the process exits with a non-zero exit code
         .stdout_capture()
         .stderr_capture()
         .start()?;
 
-    let timeout = Duration::from_secs(timeout);
+    let timeout = Duration::from_secs(timeout_seconds);
     let start = Instant::now();
 
     loop {
@@ -485,7 +482,7 @@ fn run_command(cmd: Expression, timeout: u64) -> Result<CommandResult, Error> {
             None => {},
         };
 
-        if start.elapsed() >= timeout {
+        if timeout_seconds != 0 && start.elapsed() >= timeout {
             child.kill()?;
 
             return Ok(CommandResult {

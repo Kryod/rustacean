@@ -51,8 +51,8 @@ impl Key for ShardManagerContainer {
     type Value = Arc<serenity::prelude::Mutex<ShardManager>>;
 }
 
-#[derive(Deserialize, Clone)]
-struct Settings {
+#[derive(Default, Deserialize, Clone)]
+pub struct Settings {
     pub discord_token: String,
     pub dbl_api_key: Option<String>,
     pub command_prefix: String,
@@ -67,6 +67,9 @@ struct Settings {
     pub webhook_role: Option<String>,
     pub cpu_load: String,
     pub ram_load: String,
+    pub kernel_memory: String,
+    pub compilation_timeout: u64,
+    pub execution_timeout: u64,
 }
 
 impl Key for Settings {
