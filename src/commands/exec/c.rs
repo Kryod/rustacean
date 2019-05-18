@@ -23,7 +23,7 @@ impl Language for C {
     fn pre_process_code(&self, code: &str, _src_path: &PathBuf) -> Option<String> {
         use regex::Regex;
 
-        let re = Regex::new(r"int\s*main\s*\(.*\)").unwrap();
+        let re = Regex::new(r"(?s)(int\s+main\s*\(.*\))").unwrap();
         if !re.is_match(&code) {
             let result = format!("#include <stdio.h>\r\n#include <stdlib.h>\r\nint main(int argc, char** argv) {{\r\n{}\r\n}}", code);
             return Some(result);

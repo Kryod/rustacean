@@ -22,7 +22,7 @@ impl Language for Rust {
     fn pre_process_code(&self, code: &str, _src_path: &PathBuf) -> Option<String> {
         use regex::Regex;
 
-        let re = Regex::new(r"fn\s*main\s*\(\s*\)").unwrap();
+        let re = Regex::new(r"(?s)(fn\s+main\s*\(.*\))").unwrap();
         if !re.is_match(&code) {
             let result = format!("fn main() {{\r\n{}\r\n}}", code);
             return Some(result);

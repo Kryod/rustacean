@@ -36,7 +36,7 @@ impl Language for Kotlin {
     fn pre_process_code(&self, code: &str, _src_path: &PathBuf) -> Option<String> {
         use regex::Regex;
 
-        let re = Regex::new(r"fun\s*main\s*\(.*\)").unwrap();
+        let re = Regex::new(r"(?s)(fun\s+main\s*\(.*\))").unwrap();
         if !re.is_match(&code) {
             let result = format!("fun main() {{\r\n{}\r\n}}", code);
             return Some(result);

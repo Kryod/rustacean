@@ -30,7 +30,7 @@ impl Language for Java {
 
         use regex::Regex;
 
-        let re = Regex::new(r"(?P<start>.*class\s*)(?P<name>.*?)(?P<end>\s*\{\s*public\s*static\s*void\s*main\s*\(.*\).*)").unwrap();
+        let re = Regex::new(r"(?s)((?P<start>.*class\s+)(?P<name>.*?)(?P<end>\s*\{\s*public\s+static\s+void\s+main\s*\(.*\).*))").unwrap();
         if !re.is_match(&code) {
             let result = format!(r"
 public class {} {{
