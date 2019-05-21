@@ -350,8 +350,12 @@ command!(exec(ctx, msg, _args) {
                 e = e.description(":x: Compilation failed")
                         .colour(serenity::utils::Colour::RED);
 
-                let out = format!("```\n{}```", truncate_code_output(compilation.stderr, 1024));
-                fields_out.push(("Compilation error output", out, false));
+                let (truncated, out) = format_code_output(compilation.stderr, 1024);
+                let label = match truncated {
+                    false => "Compilation error output",
+                    true => "Compilation error output (truncated)",
+                };
+                fields_out.push((label, out, false));
             },
             _ => {
                 // Compilation succeeded
@@ -360,27 +364,43 @@ command!(exec(ctx, msg, _args) {
                 }
 
                 if !compilation.stdout.is_empty() {
-                    let out = format!("```\n{}```", truncate_code_output(compilation.stdout, 1024));
-                    fields_out.push(("Compilation output", out, false));
+                    let (truncated, out) = format_code_output(compilation.stdout, 1024);
+                    let label = match truncated {
+                        false => "Compilation output",
+                        true => "Compilation output (truncated)",
+                    };
+                    fields_out.push((label, out, false));
                 }
                 if !compilation.stderr.is_empty() {
                     if !color_red {
                         e = e.colour(serenity::utils::Colour::ORANGE);
                     }
-                    let out = format!("```\n{}```", truncate_code_output(compilation.stderr, 1024));
-                    fields_out.push(("Compilation error output", out, false));
+                    let (truncated, out) = format_code_output(compilation.stderr, 1024);
+                    let label = match truncated {
+                        false => "Compilation error output",
+                        true => "Compilation error output (truncated)",
+                    };
+                    fields_out.push((label, out, false));
                 }
                 if let Some(code) = execution.exit_code {
                     fields_lang.push(("Exit code", format!("`{}`", code), true));
                 }
                 if !execution.stdout.is_empty() {
-                    let out = format!("```\n{}```", truncate_code_output(execution.stdout, 1024));
-                    fields_out.push(("Standard output", out, false));
+                    let (truncated, out) = format_code_output(execution.stdout, 1024);
+                    let label = match truncated {
+                        false => "Standard output",
+                        true => "Standard output (truncated)",
+                    };
+                    fields_out.push((label, out, false));
                 }
                 if !execution.stderr.is_empty() {
                     e = e.colour(serenity::utils::Colour::RED);
-                    let out = format!("```\n{}```", truncate_code_output(execution.stderr, 1024));
-                    fields_out.push(("Error output", out, false));
+                    let (truncated, out) = format_code_output(execution.stderr, 1024);
+                    let label = match truncated {
+                        false => "Error output",
+                        true => "Error output (truncated)",
+                    };
+                    fields_out.push((label, out, false));
                 }
             }
         };
@@ -403,13 +423,16 @@ command!(exec(ctx, msg, _args) {
     info!("Done");
 });
 
-fn truncate_code_output(text: String, max_length: usize) -> String {
+fn format_code_output(text: String, max_length: usize) -> (bool, String) {
     let mut ret = text.to_owned();
-    ret.truncate(max_length - 3);
-    if ret.len() == max_length - 3 {
-        ret.push_str("```");
+    let mut truncated = false;
+
+    if ret.len() > max_length - 7 {
+        ret.truncate(max_length - 7);
+        truncated = true;
     }
-    ret
+    ret = format!("```\n{}```", ret);
+    (truncated, ret)
 }
 
 fn get_random_filename(ext: &str) -> String {
