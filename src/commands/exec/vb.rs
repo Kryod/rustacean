@@ -20,7 +20,7 @@ impl Language for Vb {
     fn get_image_name(&self) -> String {
         "rustacean-vb.net".into()
     }
-    
+
     fn get_lang_name(&self) -> String {
         "VB.Net".into()
     }

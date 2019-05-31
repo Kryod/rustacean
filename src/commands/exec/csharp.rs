@@ -7,7 +7,6 @@ use duct::{ cmd, Expression };
 pub struct Csharp;
 
 impl Language for Csharp {
-
     fn get_image_name(&self) -> String {
         "rustacean-csharp".into()
     }

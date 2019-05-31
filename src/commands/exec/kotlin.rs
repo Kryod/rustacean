@@ -24,7 +24,7 @@ impl Language for Kotlin {
     fn get_image_name(&self) -> String {
         "rustacean-kotlin".into()
     }
-    
+
     fn get_lang_name(&self) -> String {
         "Kotlin".into()
     }

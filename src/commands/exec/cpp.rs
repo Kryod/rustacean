@@ -7,7 +7,6 @@ use duct::{ cmd, Expression };
 pub struct Cpp;
 
 impl Language for Cpp {
-
     fn get_image_name(&self) -> String {
         "rustacean-cpp".into()
     }

@@ -7,7 +7,6 @@ use duct::{ cmd, Expression };
 pub struct C;
 
 impl Language for C {
-
     fn get_image_name(&self) -> String {
         "rustacean-c".into()
     }

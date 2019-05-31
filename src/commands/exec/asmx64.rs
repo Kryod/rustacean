@@ -13,7 +13,6 @@ impl Asmx64 {
 }
 
 impl Language for Asmx64 {
-    
     fn get_image_name(&self) -> String {
         "rustacean-asm64".into()
     }

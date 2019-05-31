@@ -10,7 +10,7 @@ impl Language for Rust {
     fn get_image_name(&self) -> String {
         "rustacean-rust".into()
     }
-    
+
     fn get_lang_name(&self) -> String {
         "Rust".into()
     }
