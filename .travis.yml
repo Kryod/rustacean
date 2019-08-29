@@ -1,6 +1,6 @@
 language: rust
 rust: 
-  - 1.33.0
+  - 1.36.0
 
 before_install:
   - curl -sSL https://get.docker.com/ | sh
