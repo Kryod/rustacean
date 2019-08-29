@@ -11,6 +11,8 @@ RUN cargo install diesel_cli --no-default-features --features "sqlite"
 
 COPY ./ /home
 
+RUN mkdir /home/snippets
+
 WORKDIR /home
 
 ENV DOCKER_ENV=true

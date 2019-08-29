@@ -1,0 +1,39 @@
+apiVersion: v1
+kind: ReplicationController
+metadata:
+  name: rustacean-worker
+spec:
+  replicas: 1
+  template:
+    metadata:
+      name: rustacean-worker
+      labels:
+        app: rustacean-worker
+    spec:
+      containers:
+        - name: rustacean
+          image: kryod/rustacean:latest
+          imagePullPolicy: Always
+          volumeMounts:
+            - name: log
+              mountPath: "/home/rustacean.log"
+            - name: config
+              mountPath: "/home/config.toml"
+            - name: dockersock
+              mountPath: "/var/run/docker.sock"
+            - name: sqlite
+              mountPath: "/home/rustacean.sqlite3"
+          restartPolicy: OnFailure
+      volumes:
+      - name: dockersock
+        hostPath:
+          path: /var/run/docker.sock
+      - name: log
+        hostPath:
+          path: ./rustacean.log
+      - name: config
+        hostPath:
+          path: ./config.toml
+      - name: sqlite
+        hostPath:
+          path: ./rustacean.sqlite3
