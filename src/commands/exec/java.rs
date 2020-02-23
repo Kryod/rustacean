@@ -1,7 +1,8 @@
 use std::path::PathBuf;
 
-use commands::exec::language::Language;
 use duct::{ cmd, Expression };
+
+use crate::commands::exec::language::Language;
 
 #[derive(Debug)]
 pub struct Java;
@@ -32,15 +33,14 @@ impl Language for Java {
 
         let re = Regex::new(r"(?s)((?P<start>.*class\s+)(?P<name>.*?)(?P<end>\s*\{\s*public\s+static\s+void\s+main\s*\(.*\).*))").unwrap();
         if !re.is_match(&code) {
-            let result = format!(r"
+            Some(format!(r"
 public class {} {{
     public static void main(String[] args) {{
         {}
     }}
-}}", class_name, code);
-            return Some(result);
+}}", class_name, code))
         } else {
-            return Some(re.replace(code, format!("$start {} $end", class_name).as_str()).into());
+            Some(re.replace(code, format!("$start {} $end", class_name).as_str()).into())
         }
     }
 

@@ -5,6 +5,8 @@ use chrono::prelude::NaiveDateTime;
 use serenity::model::prelude::{ UserId, GuildId };
 use diesel::prelude::*;
 
+use crate::{ schema, DbPoolType };
+
 #[derive(Queryable)]
 pub struct User {
     id:         i32,
@@ -45,7 +47,7 @@ impl User {
         self.discord_id.parse::<u64>().expect("Could not parse UserId from string").into()
     }
 
-    pub fn get(discord_user_id: UserId, db: &::DbPoolType) -> Self {
+    pub fn get(discord_user_id: UserId, db: &DbPoolType) -> Self {
         use schema::user::dsl::*;
 
         let discord_user_id = discord_user_id.to_string();
@@ -69,7 +71,7 @@ impl User {
         }
     }
 
-    pub fn ban(&self, db: &::DbPoolType, ban_end: Option<NaiveDateTime>, ban_on_guild: Option<GuildId>) -> Ban {
+    pub fn ban(&self, db: &DbPoolType, ban_end: Option<NaiveDateTime>, ban_on_guild: Option<GuildId>) -> Ban {
         use schema::ban::dsl::*;
 
         let ban_on_guild = match ban_on_guild {
@@ -97,7 +99,7 @@ impl User {
         }
     }
 
-    pub fn unban(&self, msg_guild: GuildId, lift_globally: bool, db: &::DbPoolType) {
+    pub fn unban(&self, msg_guild: GuildId, lift_globally: bool, db: &DbPoolType) {
         let db = db.get().unwrap();
 
         use diesel::dsl::sql;
@@ -121,7 +123,7 @@ impl Ban {
         self.id
     }
 
-    pub fn get_user(&self, db: &::DbPoolType) -> Option<User> {
+    pub fn get_user(&self, db: &DbPoolType) -> Option<User> {
         use schema::user::dsl::*;
         let db = db.get().unwrap();
         match user.find(self.user).get_result::<User>(&db) {
@@ -163,7 +165,7 @@ impl Ban {
         end_epoch < epoch
     }
 
-    pub fn cleanup_outdated_bans(db: &::DbPoolType) {
+    pub fn cleanup_outdated_bans(db: &DbPoolType) {
         use diesel::dsl::sql;
         use schema::ban::dsl::*;
 
@@ -178,7 +180,7 @@ impl Ban {
             .execute(&db);
     }
 
-    pub fn get_bans(db: &::DbPoolType) -> HashMap<UserId, Vec<Ban>> {
+    pub fn get_bans(db: &DbPoolType) -> HashMap<UserId, Vec<Ban>> {
         use schema::ban::dsl::*;
 
         let res = ban.get_results::<Ban>(&db.get().unwrap());
@@ -230,7 +232,7 @@ impl LangStat {
         self.snippets_executed
     }
 
-    pub fn get(name: &str, db: &::DbPoolType) -> Self {
+    pub fn get(name: &str, db: &DbPoolType) -> Self {
         use schema::lang_stat::dsl::*;
 
         let db = db.get().unwrap();
@@ -253,7 +255,7 @@ impl LangStat {
         }
     }
 
-    pub fn increment_snippets_count(&mut self, db: &::DbPoolType) {
+    pub fn increment_snippets_count(&mut self, db: &DbPoolType) {
         self.snippets_executed += 1;
 
         use schema::lang_stat::dsl::*;
@@ -265,7 +267,7 @@ impl LangStat {
 }
 
 impl Snippet {
-    pub fn save(contents: String, lang: &str, author: UserId, msg_guild: Option<GuildId>, db: &::DbPoolType) -> Result<usize, diesel::result::Error> {
+    pub fn save(contents: String, lang: &str, author: UserId, msg_guild: Option<GuildId>, db: &DbPoolType) -> Result<usize, diesel::result::Error> {
         let author = User::get(author, &db);
 
         let msg_guild = match msg_guild {

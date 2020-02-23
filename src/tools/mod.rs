@@ -14,7 +14,7 @@ pub fn tools() -> bool {
         }
     };
     command = command.trim().into();
-    command = command.to_lowercase().into();
+    command = command.to_lowercase();
 
     let command = command.as_str();
 

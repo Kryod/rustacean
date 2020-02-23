@@ -1,7 +1,8 @@
 use std::path::PathBuf;
 
-use commands::exec::language::Language;
 use duct::{ cmd, Expression };
+
+use crate::commands::exec::language::Language;
 
 #[derive(Debug)]
 pub struct Csharp;
@@ -41,21 +42,21 @@ public class Program
     }
 
     fn get_compiler_command(&self, src_path: &PathBuf, exe_path: &PathBuf) -> Option<String> {
-        let compiler;
-        let out;
-        let target;
-        let nologo;
-        if cfg!(windows) {
-            compiler = "csc";
-            out = format!("/out:{}", exe_path.to_str().unwrap());
-            target = "/target:winexe";
-            nologo = "/nologo";
+        let (compiler, out, target, nologo) = if cfg!(windows) {
+            (
+                "csc",
+                format!("/out:{}", exe_path.to_str().unwrap()),
+                "/target:winexe",
+                "/nologo",
+            )
         } else {
-            compiler = "mcs";
-            out = format!("-out:{}", exe_path.to_str().unwrap());
-            target = "-target:winexe";
-            nologo = "-nologo";
-        }
+            (
+                "mcs",
+                format!("-out:{}", exe_path.to_str().unwrap()),
+                "-target:winexe",
+                "-nologo",
+            )
+        };
         Some(format!("{} {} {} {} {}", compiler, out, target, nologo, src_path.to_str().unwrap()))
     }
 

@@ -1,8 +1,8 @@
 command!(versions(ctx, msg, _args) {
     let mut data = ctx.data.lock();
-    let lang_manager = data.get::<::LangManager>().unwrap().lock().unwrap();
+    let lang_manager = data.get::<crate::LangManager>().unwrap().lock().unwrap();
     let mut fields: Vec<(String, String, bool)> = Vec::new();
-    for (_lang_codes, boxed_lang) in lang_manager.get_languages() {
+    for boxed_lang in lang_manager.get_languages().values() {
         if lang_manager.is_language_available(&(*boxed_lang)) {
             fields.push((
                 boxed_lang.get_lang_name(),

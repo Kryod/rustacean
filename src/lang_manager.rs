@@ -3,16 +3,22 @@ use std::sync::{ Arc, Mutex };
 use std::collections::HashMap;
 use duct::cmd;
 
-use commands::exec::language::Language;
-use commands::exec::*;
+use crate::commands::exec::language::Language;
+use crate::commands::exec::*;
 
 pub struct LangManager {
-    languages: HashMap<Vec<String>, Arc<Box<Language + Sync + Send>>>,
+    languages: HashMap<Vec<String>, Arc<Box<dyn Language + Sync + Send>>>,
     availability: HashMap<String, bool>,
 }
 
 impl Key for LangManager {
     type Value = Arc<Mutex<LangManager>>;
+}
+
+impl Default for LangManager {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl LangManager {
@@ -73,7 +79,7 @@ impl LangManager {
         mngr
     }
 
-    pub fn get(&self, lang: &String) -> Option<Arc<Box<Language + Sync + Send>>> {
+    pub fn get(&self, lang: &str) -> Option<Arc<Box<dyn Language + Sync + Send>>> {
         for (lang_codes, boxed_lang) in self.languages.iter() {
             for l in lang_codes {
                 if l == lang {
@@ -84,7 +90,7 @@ impl LangManager {
         None
     }
 
-    pub fn is_language_available(&self, lang: &Box<Language + std::marker::Sync + std::marker::Send>) -> bool {
+    pub fn is_language_available(&self, lang: &Box<dyn Language + Sync + Send>) -> bool {
         match self.availability.get(&lang.get_lang_name()) {
             Some(availability) => *availability,
             None => false,
@@ -104,7 +110,7 @@ impl LangManager {
         langs.join(", ")
     }
 
-    pub fn get_languages(&self) -> &HashMap<Vec<String>, Arc<Box<Language + Sync + Send>>> {
+    pub fn get_languages(&self) -> &HashMap<Vec<String>, Arc<Box<dyn Language + Sync + Send>>> {
         &self.languages
     }
 
@@ -112,7 +118,7 @@ impl LangManager {
         info!("Checking available languages...");
         let mut results: Vec<(bool, String)> = Vec::new();
 
-        for (_lang_codes, boxed_lang) in self.languages.iter() {
+        for boxed_lang in self.languages.values() {
             //let command = boxed_lang.check_compiler_or_interpreter().stdout_null().stderr_null();
             let lang_name = boxed_lang.get_lang_name();
             let low_lang_name = lang_name.to_lowercase();

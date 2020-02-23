@@ -1,15 +1,17 @@
 use serenity::model::prelude::User;
 use serenity::framework::standard::ArgError::{ Parse, Eos };
 
+use crate::{ models, DbPool, Bans, Settings };
+
 command!(unban(ctx, msg, args) {
     let mut data = ctx.data.lock();
-    let db = data.get::<::DbPool>().unwrap();
+    let db = data.get::<DbPool>().unwrap();
     let user = args.single::<User>();
     let global = args.single::<bool>();
 
     let (discord_user, user) = match user {
         Ok(discord_user) => {
-            let user = ::models::User::get(discord_user.id, &db);
+            let user = models::User::get(discord_user.id, &db);
             (discord_user, user)
         },
         Err(Parse(e)) => {
@@ -27,7 +29,7 @@ command!(unban(ctx, msg, args) {
     };
 
     let (is_banned, is_banned_globally) = {
-        let bans = data.get::<::Bans>().unwrap();
+        let bans = data.get::<Bans>().unwrap();
         let is_banned = bans.iter().any(| (user_id, bans_for_user) | {
             *user_id == discord_user.id && bans_for_user.iter().any(| b | {
                 b.is_banned_for_guild(msg.guild_id) && !b.is_over()
@@ -46,7 +48,7 @@ command!(unban(ctx, msg, args) {
     }
 
     let is_bot_owner = {
-        let settings = data.get::<::Settings>().unwrap().lock().unwrap();
+        let settings = data.get::<Settings>().unwrap().lock().unwrap();
         let owners = &settings.bot_owners;
         owners.contains(&msg.author.id)
     };

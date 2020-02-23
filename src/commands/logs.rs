@@ -31,9 +31,8 @@ fn parsing(args: Vec<String>) -> (Option<i64>, Option<String>) {
         }
 
         let int_parse = arg.trim().parse::<i64>();
-        match int_parse {
-            Ok(i) => lines = Some(i),
-            Err(_) => {}
+        if let Ok(i) = int_parse {
+            lines = Some(i);
         }
     }
 
@@ -41,23 +40,15 @@ fn parsing(args: Vec<String>) -> (Option<i64>, Option<String>) {
 }
 
 command!(logs(_ctx, msg, args) {
-
     let mut args_vec: Vec<String> = Vec::new();
     for arg in args.iter::<String>() {
-        args_vec.push(arg.unwrap_or("".to_string()));
+        args_vec.push(arg.unwrap_or_else(|_| "".to_string()));
     }
 
     let (lines, types) = parsing(args_vec);
 
-    let grep = match types {
-        Some(_) => true,
-        None => false,
-    };
-
-    let nb = match lines {
-        Some(_) => true,
-        None => false,
-    };
+    let grep = types.is_some();
+    let nb = lines.is_some();
 
     let log = match (grep, nb) {
         (false, false) => {
@@ -93,6 +84,6 @@ command!(logs(_ctx, msg, args) {
     if log != "" {
         let _ = msg.reply(&format!("```{}```", log));
     } else {
-        let _ = msg.reply(&format!("Could not find anything"));
+        let _ = msg.reply("Could not find anything".to_string().as_ref());
     }
 });

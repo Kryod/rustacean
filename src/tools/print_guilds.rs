@@ -65,7 +65,7 @@ pub fn print_guilds() {
 
     let thread_counter = counter.clone();
     thread::spawn(move || {
-        let settings = ::init_settings();
+        let settings = crate::init_settings();
         let mut client = Client::new(&settings.discord_token, Handler).expect("Err creating client");
         {
             let mut data = client.data.lock();

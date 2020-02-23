@@ -1,16 +1,15 @@
 use std::path::PathBuf;
 
-use commands::exec::language::Language;
 use duct::{ cmd, Expression };
+
+use crate::commands::exec::language::Language;
 
 #[derive(Debug)]
 pub struct JavaScript;
 
 impl JavaScript {
     fn get_interpreter(&self) -> String {
-        if cfg!(windows) {
-            "node".into()
-        } else if cfg!(target_os="macos") {
+        if cfg!(windows) || cfg!(target_os="macos") {
             "node".into()
         } else {
             "nodejs".into()

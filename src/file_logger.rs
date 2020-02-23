@@ -68,7 +68,7 @@ impl simplelog::SharedLogger for FileLogger {
         None
     }
 
-    fn as_log(self: Box<Self>) -> Box<log::Log> {
+    fn as_log(self: Box<Self>) -> Box<dyn log::Log> {
         Box::new(*self)
     }
 }

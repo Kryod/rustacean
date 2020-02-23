@@ -13,7 +13,7 @@ use serenity::model::{
 };
 use rand::distributions::Alphanumeric;
 
-use lang_manager::LangManager;
+use crate::{ models, LangManager, Settings, DbPool };
 
 pub mod language;
 
@@ -88,7 +88,7 @@ fn pre_process_output(mut output: String) -> String {
 
 pub type BoxedLang = std::sync::Arc<std::boxed::Box<(dyn language::Language + std::marker::Sync + std::marker::Send + 'static)>>;
 pub fn get_lang(lang_manager: &LangManager, lang_code: &str) -> Result<BoxedLang, Error> {
-    match lang_manager.get(&lang_code.into()) {
+    match lang_manager.get(&lang_code.to_string()) {
         Some(lang) => {
             if lang_manager.is_language_available(&(*lang)) {
                 Ok(lang)
@@ -103,14 +103,11 @@ pub fn get_lang(lang_manager: &LangManager, lang_code: &str) -> Result<BoxedLang
     }
 }
 
-pub fn run_code(settings: &::Settings, mut code: String, lang: BoxedLang, author: UserId, mut reply: Option<&mut Message>) -> Result<(CommandResult, CommandResult, String, String), Error> {
+pub fn run_code(settings: &Settings, mut code: String, lang: BoxedLang, author: UserId, mut reply: Option<&mut Message>) -> Result<(CommandResult, CommandResult, String, String), Error> {
     let mut append_to_reply_msg = |text: &str| {
-        match reply {
-            Some(ref mut reply) => {
-                let new_content = format!("{}\n{}", reply.content, text);
-                let _ = reply.edit(|m| m.content(new_content));
-            },
-            None => { },
+        if let Some(ref mut reply) = reply {
+            let new_content = format!("{}\n{}", reply.content, text);
+            let _ = reply.edit(|m| m.content(new_content));
         };
     };
     append_to_reply_msg("Saving code...");
@@ -234,9 +231,9 @@ command!(exec(ctx, msg, _args) {
     let arg = msg.content.clone();
     let split = arg.split("```");
     let data = ctx.data.lock();
-    let settings = data.get::<::Settings>().unwrap().lock().unwrap().clone();
+    let settings = data.get::<Settings>().unwrap().lock().unwrap().clone();
 
-    let langs = data.get::<::LangManager>().unwrap().lock().unwrap().get_languages_list();
+    let langs = data.get::<LangManager>().unwrap().lock().unwrap().get_languages_list();
     drop(data);
 
     if split.clone().nth(1).is_none() {
@@ -247,7 +244,7 @@ command!(exec(ctx, msg, _args) {
         .take(2)
         .collect::<Vec<_>>()[1];
 
-    let mut split = code.split("\n");
+    let mut split = code.split('\n');
     let (lang_code, mut code) = match split.next() {
         Some(line) => {
             let code = split.collect::<Vec<_>>().join("\n");
@@ -266,7 +263,7 @@ command!(exec(ctx, msg, _args) {
             // We make sure to lock the data in a separate code block,
             // Otherwise we would block the mutex through the entire compiling and/or executing phases
             let data = ctx.data.lock();
-            let mngr = data.get::<::LangManager>().unwrap().lock().unwrap();
+            let mngr = data.get::<LangManager>().unwrap().lock().unwrap();
             get_lang(&mngr, lang_code.as_ref())
         };
         let lang = match lang {
@@ -279,8 +276,8 @@ command!(exec(ctx, msg, _args) {
 
         {
             let data = ctx.data.lock();
-            let db = data.get::<::DbPool>().unwrap();
-            match ::models::Snippet::save(code.clone(), &lang.get_lang_name(), msg.author.id, msg.guild_id, db) {
+            let db = data.get::<DbPool>().unwrap();
+            match models::Snippet::save(code.clone(), &lang.get_lang_name(), msg.author.id, msg.guild_id, db) {
                 Ok(_) => {},
                 Err(e) => warn!("Could not save snippet to db: {}", e),
             };
@@ -311,8 +308,8 @@ command!(exec(ctx, msg, _args) {
 
     {
         let data = ctx.data.lock();
-        let db = data.get::<::DbPool>().unwrap();
-        let mut stat = ::models::LangStat::get(&lang.get_lang_name(), db);
+        let db = data.get::<DbPool>().unwrap();
+        let mut stat = models::LangStat::get(&lang.get_lang_name(), db);
         stat.increment_snippets_count(db);
     }
 
@@ -351,9 +348,10 @@ command!(exec(ctx, msg, _args) {
                         .colour(serenity::utils::Colour::RED);
 
                 let (truncated, out) = format_code_output(compilation.stderr, 1024);
-                let label = match truncated {
-                    false => "Compilation error output",
-                    true => "Compilation error output (truncated)",
+                let label = if truncated {
+                    "Compilation error output (truncated)"
+                } else {
+                    "Compilation error output"
                 };
                 fields_out.push((label, out, false));
             },
@@ -365,9 +363,10 @@ command!(exec(ctx, msg, _args) {
 
                 if !compilation.stdout.is_empty() {
                     let (truncated, out) = format_code_output(compilation.stdout, 1024);
-                    let label = match truncated {
-                        false => "Compilation output",
-                        true => "Compilation output (truncated)",
+                    let label = if truncated {
+                        "Compilation output (truncated)"
+                    } else {
+                        "Compilation output"
                     };
                     fields_out.push((label, out, false));
                 }
@@ -376,9 +375,10 @@ command!(exec(ctx, msg, _args) {
                         e = e.colour(serenity::utils::Colour::ORANGE);
                     }
                     let (truncated, out) = format_code_output(compilation.stderr, 1024);
-                    let label = match truncated {
-                        false => "Compilation error output",
-                        true => "Compilation error output (truncated)",
+                    let label = if truncated {
+                        "Compilation error output (truncated)"
+                    } else {
+                        "Compilation error output"
                     };
                     fields_out.push((label, out, false));
                 }
@@ -387,18 +387,20 @@ command!(exec(ctx, msg, _args) {
                 }
                 if !execution.stdout.is_empty() {
                     let (truncated, out) = format_code_output(execution.stdout, 1024);
-                    let label = match truncated {
-                        false => "Standard output",
-                        true => "Standard output (truncated)",
+                    let label = if truncated {
+                        "Standard output (truncated)"
+                    } else {
+                        "Standard output"
                     };
                     fields_out.push((label, out, false));
                 }
                 if !execution.stderr.is_empty() {
                     e = e.colour(serenity::utils::Colour::RED);
                     let (truncated, out) = format_code_output(execution.stderr, 1024);
-                    let label = match truncated {
-                        false => "Error output",
-                        true => "Error output (truncated)",
+                    let label = if truncated {
+                        "Error output (truncated)"
+                    } else {
+                        "Error output"
                     };
                     fields_out.push((label, out, false));
                 }
@@ -423,16 +425,16 @@ command!(exec(ctx, msg, _args) {
     info!("Done");
 });
 
-fn format_code_output(text: String, max_length: usize) -> (bool, String) {
-    let mut ret = text.to_owned();
-    let mut truncated = false;
+fn format_code_output(mut text: String, max_length: usize) -> (bool, String) {
+    let truncated = if text.len() > max_length - 7 {
+        text.truncate(max_length - 7);
+        true
+    } else {
+        false
+    };
 
-    if ret.len() > max_length - 7 {
-        ret.truncate(max_length - 7);
-        truncated = true;
-    }
-    ret = format!("```\n{}```", ret);
-    (truncated, ret)
+    text = format!("```\n{}```", text);
+    (truncated, text)
 }
 
 fn get_random_filename(ext: &str) -> String {
@@ -498,12 +500,9 @@ fn run_command(cmd: Expression, timeout_seconds: u64) -> Result<CommandResult, E
     let start = Instant::now();
 
     loop {
-        match child.try_wait()? {
-            Some(_) => {
-                break;
-            },
-            None => {},
-        };
+        if child.try_wait()?.is_some() {
+            break;
+        }
 
         if timeout_seconds != 0 && start.elapsed() >= timeout {
             child.kill()?;

@@ -48,7 +48,7 @@ pub fn post_stats_shards(bot_id: UserId, api_key: &str, server_count: Vec<usize>
 }
 
 fn do_request(endpoint: &str, api_key: &str, data: Option<HashMap<&str, String>>) -> RequestType<String> {
-    let client = reqwest::Client::new();
+    let client = reqwest::blocking::Client::new();
     let url = format!("https://discordbots.org/api{}", endpoint);
     let builder = match data {
         Some(data) => {

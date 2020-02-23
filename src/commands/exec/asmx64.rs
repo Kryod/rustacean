@@ -1,7 +1,8 @@
 use std::path::PathBuf;
 
-use commands::exec::language::Language;
 use duct::{ cmd, Expression };
+
+use crate::commands::exec::language::Language;
 
 #[derive(Debug)]
 pub struct Asmx64;

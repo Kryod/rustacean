@@ -3,16 +3,6 @@
 #[macro_use] extern crate serenity;
 #[macro_use] extern crate serde_derive;
 
-extern crate rand;
-extern crate simplelog;
-extern crate toml;
-extern crate serde;
-extern crate duct;
-extern crate regex;
-extern crate typemap;
-extern crate chrono;
-extern crate reqwest;
-
 pub mod commands;
 pub mod lang_manager;
 pub mod tools;
@@ -179,9 +169,10 @@ fn cargo_test_thread(settings: Settings) {
                 .expect("valid webhook");
 
             let mut cargo = Command::new("cargo");
-            let cargo_test = match cfg!(debug_assertions) {
-                true => cargo.arg("test"),
-                false => cargo.arg("test").arg("--release"),
+            let cargo_test = if cfg!(debug_assertions) {
+                cargo.arg("test")
+            } else {
+                cargo.arg("test").arg("--release")
             };
             let output = cargo_test.output();
             let output = match output {
@@ -244,9 +235,10 @@ fn cargo_test_thread(settings: Settings) {
                 },
             };
 
-            let content = match ping {
-                true => format!("<@&{}>, we have a problem!", webhook_role),
-                false => "Everything is fine :sunny:".into()
+            let content = if ping {
+                format!("<@&{}>, we have a problem!", webhook_role)
+            } else {
+                "Everything is fine :sunny:".into()
             };
 
             let _ = webhook.execute(false, |w| w
@@ -265,24 +257,21 @@ fn snippets_cleanup_thread() {
         // Periodic snippets directory cleanup
         let cleanup_min_age = std::time::Duration::from_secs(60 * 60);
         loop {
-            match commands::exec::get_snippets_directory() {
-                Ok(snippets_dir) => {
-                    let user_dirs = std::fs::read_dir(snippets_dir).unwrap();
-                    for user_dir in user_dirs {
-                        let snippet_files = std::fs::read_dir(user_dir.unwrap().path()).unwrap();
-                        for file in snippet_files {
-                            let file = file.unwrap().path();
-                            let metadata = std::fs::metadata(&file).unwrap();
-                            if let Ok(date) =  metadata.created() {
-                                if metadata.is_file() && date.elapsed().unwrap() >= cleanup_min_age {
-                                    let _ = std::fs::remove_file(file);
-                                }
+            if let Ok(snippets_dir) = commands::exec::get_snippets_directory() {
+                let user_dirs = std::fs::read_dir(snippets_dir).unwrap();
+                for user_dir in user_dirs {
+                    let snippet_files = std::fs::read_dir(user_dir.unwrap().path()).unwrap();
+                    for file in snippet_files {
+                        let file = file.unwrap().path();
+                        let metadata = std::fs::metadata(&file).unwrap();
+                        if let Ok(date) =  metadata.created() {
+                            if metadata.is_file() && date.elapsed().unwrap() >= cleanup_min_age {
+                                let _ = std::fs::remove_file(file);
                             }
                         }
                     }
-                },
-                Err(_) => {},
-            };
+                }
+            }
 
             std::thread::sleep(cleanup_min_age);
         }
@@ -311,10 +300,9 @@ fn get_guilds() -> Result<usize, serenity::Error> {
         if len < 100 {
             break;
         }
-        match guilds.last() {
-            Some(last) => last_guild_id = *last.id.as_u64(),
-            None => {}
-        };
+        if let Some(last) = guilds.last() {
+            last_guild_id = *last.id.as_u64();
+        }
     }
 
     Ok(count)
@@ -329,17 +317,18 @@ fn init_settings() -> Settings {
 }
 
 fn init_logging(settings: &Settings) {
-    use simplelog::{ CombinedLogger, Config, LevelFilter, TermLogger };
+    use simplelog::{ CombinedLogger, ConfigBuilder, LevelFilter, TermLogger, TerminalMode };
 
-    let mut config = Config::default();
-    config.time_format = Some("[%Y-%m-%d %H:%M:%S]");
+    let config = ConfigBuilder::new()
+                            .set_time_format_str("[%Y-%m-%d %H:%M:%S]")
+                            .build();
 
     let log_level_term = LevelFilter::from_str(settings.log_level_term.as_ref()).expect("Invalid log level filter");
     let log_level_file = LevelFilter::from_str(settings.log_level_file.as_ref()).expect("Invalid log level filter");
 
     CombinedLogger::init(
         vec![
-            TermLogger::new(log_level_term, config).unwrap(),
+            TermLogger::new(log_level_term, config, TerminalMode::Mixed).unwrap(),
             Box::new(file_logger::FileLogger::new(&settings.log_file, log_level_file)),
         ]
     ).unwrap();

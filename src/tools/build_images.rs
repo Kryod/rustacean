@@ -1,4 +1,4 @@
-use lang_manager::LangManager;
+use crate::lang_manager::LangManager;
 
 /// Build all images for the referenced languages.
 /// 

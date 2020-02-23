@@ -4,11 +4,13 @@ use serenity::framework::standard::ArgError::{ Eos, Parse };
 use serenity::model::prelude::{ User, Permissions };
 use chrono::prelude::{ NaiveDate, NaiveDateTime };
 
+use crate::{ models, DbPool, Settings, Bans };
+
 command!(ban(ctx, msg, args) {
     let mut data = ctx.data.lock();
 
     let (discord_user, new_ban) = {
-        let db = data.get::<::DbPool>().unwrap();
+        let db = data.get::<DbPool>().unwrap();
 
         let user = args.single::<User>();
         let time = args.single::<String>();
@@ -16,7 +18,7 @@ command!(ban(ctx, msg, args) {
 
         let (discord_user, user) = match user {
             Ok(discord_user) => {
-                let user = ::models::User::get(discord_user.id, &db);
+                let user = models::User::get(discord_user.id, &db);
                 (discord_user, user)
             },
             Err(Parse(e)) => {
@@ -30,7 +32,7 @@ command!(ban(ctx, msg, args) {
         };
 
         let (is_bot_owner, is_target_owner) = {
-            let settings = data.get::<::Settings>().unwrap().lock().unwrap();
+            let settings = data.get::<Settings>().unwrap().lock().unwrap();
             let owners = &settings.bot_owners;
             (
                 owners.contains(&msg.author.id),
@@ -80,21 +82,20 @@ command!(ban(ctx, msg, args) {
 
         let guild = match global {
             Ok(global) => {
-                match global {
-                    true => {
-                        if !is_bot_owner {
-                            let _ = msg.reply("You need to be a bot owner to ban someone globally.");
-                            return Ok(());
-                        }
-                        None
-                    },
-                    false => msg.guild_id,
+                if global {
+                    if !is_bot_owner {
+                        let _ = msg.reply("You need to be a bot owner to ban someone globally.");
+                        return Ok(());
+                    }
+                    None
+                } else {
+                    msg.guild_id
                 }
             },
             Err(_) => msg.guild_id,
         };
         let is_already_banned = {
-            let bans = data.get::<::Bans>().unwrap();
+            let bans = data.get::<Bans>().unwrap();
             bans.iter().any(| (user_id, bans_for_user) | {
                 *user_id == discord_user.id && bans_for_user.iter().any(| b | {
                     b.is_banned_for_guild(msg.guild_id) && !b.is_over()
@@ -134,7 +135,7 @@ command!(ban(ctx, msg, args) {
         (discord_user, new_ban)
     };
 
-    let mut bans = data.get_mut::<::Bans>().unwrap();
+    let mut bans = data.get_mut::<Bans>().unwrap();
     let vec = match bans.entry(discord_user.id) {
         Vacant(entry) => entry.insert(Vec::new()),
         Occupied(entry) => entry.into_mut(),
