@@ -1,9 +1,18 @@
 FROM rust:1.42.0-slim
 
 RUN apt-get update -y && apt-get install -y libssl-dev \
+    wget \
+    make \
     pkg-config \
     libsqlite3-dev \
     curl
+
+RUN cd /root && \
+    wget https://www.openssl.org/source/openssl-1.1.0f.tar.gz && \
+    tar xzvf openssl-1.1.0f.tar.gz && \
+    cd openssl-1.1.0f && \
+    ./config && \
+    make
 
 RUN curl -sSL https://get.docker.com/ | sh
 
@@ -16,3 +25,5 @@ RUN mkdir /home/snippets
 WORKDIR /home
 
 ENV DOCKER_ENV=true
+ENV OPENSSL_LIB_DIR="/root/openssl-1.1.0f"
+ENV OPENSSL_INCLUDE_DIR="/root/openssl-1.1.0f/include"
