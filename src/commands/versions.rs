@@ -1,5 +1,13 @@
-command!(versions(ctx, msg, _args) {
-    let mut data = ctx.data.lock();
+use serenity::{
+    prelude::Context,
+    model::channel::Message,
+    framework::standard::{ CommandResult, macros::command },
+};
+
+#[command]
+#[aliases("version", "ver")]
+fn versions(ctx: &mut Context, msg: &Message) -> CommandResult {
+    let data = ctx.data.read();
     let lang_manager = data.get::<crate::LangManager>().unwrap().lock().unwrap();
     let mut fields: Vec<(String, String, bool)> = Vec::new();
     for boxed_lang in lang_manager.get_languages().values() {
@@ -13,11 +21,13 @@ command!(versions(ctx, msg, _args) {
     }
     fields.sort();
 
-    let _ = msg.channel_id.send_message(|m| m
+    let _ = msg.channel_id.send_message(&ctx, |m| m
         .embed(|e| e
             .title("Versions")
             .description("A list of versions of languages available.")
             .fields(fields)
         )
-    );
-});
+    )?;
+
+    Ok(())
+}

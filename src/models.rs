@@ -99,7 +99,7 @@ impl User {
         }
     }
 
-    pub fn unban(&self, msg_guild: GuildId, lift_globally: bool, db: &DbPoolType) {
+    pub fn unban(&self, msg_guild: GuildId, lift_globally: bool, db: &DbPoolType) -> Option<i32> {
         let db = db.get().unwrap();
 
         use diesel::dsl::sql;
@@ -112,9 +112,13 @@ impl User {
             filter.sql("")
         };
 
+        let ban_id: Option<i32> = ban.select(id).filter(&filter).first(&db).ok();
+
         let _ = diesel::delete(ban)
             .filter(filter)
             .execute(&db);
+
+        ban_id
     }
 }
 

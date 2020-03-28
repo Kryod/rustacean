@@ -1,4 +1,9 @@
 use duct::cmd;
+use serenity::{
+    prelude::Context,
+    model::channel::Message,
+    framework::standard::{ Args, CommandResult, macros::command },
+};
 
 #[derive(Debug)]
 enum Type {
@@ -39,7 +44,11 @@ fn parsing(args: Vec<String>) -> (Option<i64>, Option<String>) {
     (lines, types) 
 }
 
-command!(logs(_ctx, msg, args) {
+#[command]
+#[description = "Returns lines from the current log file. You can specify a string to search (INFO, DEBUG, ...). By default it gives the last 11 lines."]
+#[example = "20 INFO"]
+#[owners_only]
+fn logs(ctx: &mut Context, msg: &Message, mut args: Args) -> CommandResult {
     let mut args_vec: Vec<String> = Vec::new();
     for arg in args.iter::<String>() {
         args_vec.push(arg.unwrap_or_else(|_| "".to_string()));
@@ -82,8 +91,10 @@ command!(logs(_ctx, msg, args) {
     };
 
     if log != "" {
-        let _ = msg.reply(&format!("```{}```", log));
+        let _ = msg.reply(ctx, &format!("```{}```", log))?;
     } else {
-        let _ = msg.reply("Could not find anything".to_string().as_ref());
+        let _ = msg.reply(ctx, "Could not find anything")?;
     }
-});
+
+    Ok(())
+}

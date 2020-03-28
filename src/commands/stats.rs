@@ -1,7 +1,16 @@
 use crate::{ models, LangManager, DbPool };
 
-command!(stats(ctx, msg, _args) {
-    let mut data = ctx.data.lock();
+use serenity::{
+    prelude::Context,
+    model::channel::Message,
+    framework::standard::{ CommandResult, macros::command },
+};
+
+#[command]
+#[aliases("stat")]
+#[description = "Gets statistics about usage of languages for the `exec` command."]
+fn stats(ctx: &mut Context, msg: &Message) -> CommandResult {
+    let data = ctx.data.read();
     let lang_manager = data.get::<LangManager>().unwrap().lock().unwrap();
     let db = data.get::<DbPool>().unwrap();
     let mut fields: Vec<(String, String, bool)> = Vec::new();
@@ -16,11 +25,13 @@ command!(stats(ctx, msg, _args) {
     }
     fields.sort();
 
-    let _ = msg.channel_id.send_message(|m| m
+    let _ = msg.channel_id.send_message(&ctx, |m| m
         .embed(|e| e
             .title("Stats")
             .description("Stats about usage of each language.")
             .fields(fields)
         )
-    );
-});
+    )?;
+
+    Ok(())
+}

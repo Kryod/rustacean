@@ -1,7 +1,17 @@
 use crate::LangManager;
 
-command!(languages(ctx, msg, _args) {
-    let mut data = ctx.data.lock();
+use serenity::{
+    prelude::Context,
+    model::channel::Message,
+    framework::standard::{ CommandResult, macros::command },
+};
+
+
+#[command]
+#[aliases("langs", "language", "lang")]
+#[description = "Get a list of available programming languages for the `exec` command."]
+fn languages(ctx: &mut Context, msg: &Message) -> CommandResult {
+    let data = ctx.data.read();
     let lang_manager = data.get::<LangManager>().unwrap().lock().unwrap();
     let mut fields: Vec<(String, String, bool)> = Vec::new();
     for (lang_codes, boxed_lang) in lang_manager.get_languages() {
@@ -15,11 +25,12 @@ command!(languages(ctx, msg, _args) {
     }
     fields.sort();
 
-    let _ = msg.channel_id.send_message(|m| m
+    let _ = msg.channel_id.send_message(&ctx, |m| m
         .embed(|e| e
             .title("Languages")
             .description("A list of available languages for the `exec` command.")
             .fields(fields)
         )
-    );
-});
+    )?;
+    Ok(())
+}

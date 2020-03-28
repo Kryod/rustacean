@@ -1,25 +1,41 @@
-use serenity::model::prelude::User;
-use serenity::framework::standard::ArgError::{ Parse, Eos };
-
 use crate::{ models, DbPool, Bans, Settings };
 
-command!(unban(ctx, msg, args) {
-    let mut data = ctx.data.lock();
+use serenity::{
+    prelude::Context,
+    model::{
+        prelude::UserId,
+        channel::Message,
+    },
+    framework::standard::{
+        Args, CommandResult,
+        macros::command, ArgError::Parse,
+    },
+};
+
+#[command]
+#[description = "Lifts a previously issued ban. This command will not unban the target user from the Discord server, however."]
+#[example = "@user"]
+#[required_permissions("ADMINISTRATOR")]
+#[only_in(guilds)]
+#[owner_privilege]
+fn unban(ctx: &mut Context, msg: &Message, mut args: Args) -> CommandResult {
+    let mut data = ctx.data.write();
     let db = data.get::<DbPool>().unwrap();
-    let user = args.single::<User>();
+    let user_id = args.single::<UserId>();
     let global = args.single::<bool>();
 
-    let (discord_user, user) = match user {
-        Ok(discord_user) => {
-            let user = models::User::get(discord_user.id, &db);
+    let (discord_user, user) = match user_id {
+        Ok(user_id) => {
+            let discord_user = user_id.to_user(&ctx).unwrap();
+            let user = models::User::get(user_id, &db);
             (discord_user, user)
         },
         Err(Parse(e)) => {
-            let _ = msg.reply(&format!("Please specify a valid user to unban ({}).", e));
+            let _ = msg.reply(&ctx, &format!("Please specify a valid user to unban ({}).", e))?;
             return Ok(());
         },
-        Err(Eos) => {
-            let _ = msg.reply("Please specify the user to unban.");
+        Err(_e) => {
+            let _ = msg.reply(&ctx, "Please specify the user to unban.")?;
             return Ok(());
         },
     };
@@ -43,7 +59,7 @@ command!(unban(ctx, msg, args) {
         (is_banned, is_banned_globally)
     };
     if !is_banned {
-        let _ = msg.reply("This user is not banned.");
+        let _ = msg.reply(&ctx, "This user is not banned.")?;
         return Ok(());
     }
 
@@ -53,10 +69,22 @@ command!(unban(ctx, msg, args) {
         owners.contains(&msg.author.id)
     };
     if is_banned_globally && !is_bot_owner {
-        let _ = msg.reply("You need to be a bot owner to lift a global ban.");
+        let _ = msg.reply(&ctx, "You need to be a bot owner to lift a global ban.")?;
         return Ok(());
     }
 
-    user.unban(msg.guild_id.unwrap(), (is_bot_owner && global) || (is_bot_owner && is_banned_globally), &db);
-    let _ = msg.reply(&format!("Successfully unbanned {}!", discord_user));
-});
+    let lifted_ban_id = user.unban(msg.guild_id.unwrap(), (is_bot_owner && global) || (is_bot_owner && is_banned_globally), &db);
+    match lifted_ban_id {
+        Some(id) => {
+            let bans = data.get_mut::<Bans>().unwrap();
+            match bans.get_mut(&discord_user.id) {
+                Some(bans) => bans.retain(|ban| ban.get_id() != id),
+                None => {},
+            };
+            msg.reply(&ctx, &format!("Successfully unbanned {}!", discord_user))?
+        },
+        None => msg.reply(&ctx, &format!("Could not find ban entry for {} in database.", discord_user))?,
+    };
+
+    Ok(())
+}

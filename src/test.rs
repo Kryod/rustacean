@@ -11,7 +11,7 @@ fn test_lang(code: &str, lang: &str, ret_code: i32, ignore_compil_stdout: bool, 
     let settings = get_test_settings();
 
     let lang = commands::exec::get_lang(&lang_manager, lang).unwrap();
-    let res = commands::exec::run_code(&settings, code.into(), lang, user, None);
+    let res = commands::exec::run_code(&settings, code.into(), lang, user, None, None);
     let (compilation, execution, _, _) = res.unwrap();
 
     if compilation.timed_out {

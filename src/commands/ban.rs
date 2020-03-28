@@ -1,32 +1,45 @@
-use std::collections::hash_map::Entry::{ Vacant, Occupied };
-
-use serenity::framework::standard::ArgError::{ Eos, Parse };
-use serenity::model::prelude::{ User, Permissions };
 use chrono::prelude::{ NaiveDate, NaiveDateTime };
+use serenity::{
+    prelude::Context,
+    model::{
+        channel::Message,
+        prelude::{ UserId, Permissions },
+    },
+    framework::standard::{ Args, CommandResult, macros::command, ArgError::Parse },
+};
+
+use std::collections::hash_map::Entry::{ Vacant, Occupied };
 
 use crate::{ models, DbPool, Settings, Bans };
 
-command!(ban(ctx, msg, args) {
-    let mut data = ctx.data.lock();
+#[command]
+#[description = "Ban a user from using the bot. This command will not ban the target user from the Discord server, however."]
+#[example = "@user 2019-11-24"]
+#[required_permissions("ADMINISTRATOR")]
+#[only_in(guilds)]
+#[owner_privilege]
+fn ban(ctx: &mut Context, msg: &Message, mut args: Args) -> CommandResult {
+    let mut data = ctx.data.write();
 
     let (discord_user, new_ban) = {
         let db = data.get::<DbPool>().unwrap();
 
-        let user = args.single::<User>();
+        let user_id = args.single::<UserId>();
         let time = args.single::<String>();
         let global = args.single::<bool>();
 
-        let (discord_user, user) = match user {
-            Ok(discord_user) => {
-                let user = models::User::get(discord_user.id, &db);
+        let (discord_user, user) = match user_id {
+            Ok(user_id) => {
+                let discord_user = user_id.to_user(&ctx).unwrap();
+                let user = models::User::get(user_id, &db);
                 (discord_user, user)
             },
             Err(Parse(e)) => {
-                let _ = msg.reply(&format!("Please specify a valid user to ban ({}).", e));
+                let _ = msg.reply(&ctx, &format!("Please specify a valid user to ban ({}).", e));
                 return Ok(());
             },
-            Err(Eos) => {
-                let _ = msg.reply("Please specify the user to ban.");
+            Err(_e) => {
+                let _ = msg.reply(&ctx, "Please specify the user to ban.");
                 return Ok(());
             },
         };
@@ -41,29 +54,29 @@ command!(ban(ctx, msg, args) {
         };
 
         if discord_user.id == msg.author.id {
-            let _ = msg.reply("You cannot ban yourself...");
+            let _ = msg.reply(&ctx, "You cannot ban yourself...");
             return Ok(());
         }
 
         if is_target_owner {
-            let _ = msg.reply("You cannot ban this user.");
+            let _ = msg.reply(&ctx, "You cannot ban this user.");
             return Ok(());
         }
 
         let channel = msg.channel_id;
-        let channel = channel.to_channel();
+        let channel = channel.to_channel(&ctx);
         let channel = match channel {
             Ok(channel) => channel,
             Err(e) => {
                 error!("ban.rs: Could not fetch channel: {}", e);
-                let _ = msg.reply(&format!("An error occurred ({})", e));
+                let _ = msg.reply(&ctx, &format!("An error occurred ({})", e));
                 return Ok(());
             },
         };
 
         let is_target_admin = match channel.guild() {
             Some(guild_channel_lock) => {
-                let guild = guild_channel_lock.read().guild();
+                let guild = guild_channel_lock.read().guild(&ctx);
                 match guild {
                     Some(guild_lock) => {
                         let permissions = guild_lock.read().member_permissions(discord_user.id);
@@ -76,7 +89,7 @@ command!(ban(ctx, msg, args) {
         };
 
         if !is_bot_owner && is_target_admin {
-            let _ = msg.reply("You cannot ban an other guild administrator.");
+            let _ = msg.reply(&ctx, "You cannot ban an other guild administrator.");
             return Ok(());
         }
 
@@ -84,7 +97,7 @@ command!(ban(ctx, msg, args) {
             Ok(global) => {
                 if global {
                     if !is_bot_owner {
-                        let _ = msg.reply("You need to be a bot owner to ban someone globally.");
+                        let _ = msg.reply(&ctx, "You need to be a bot owner to ban someone globally.");
                         return Ok(());
                     }
                     None
@@ -103,7 +116,7 @@ command!(ban(ctx, msg, args) {
             })
         };
         if is_already_banned {
-            let _ = msg.reply("This user is already banned.");
+            let _ = msg.reply(&ctx, "This user is already banned.");
             return Ok(());
         }
 
@@ -120,7 +133,7 @@ command!(ban(ctx, msg, args) {
                             match NaiveDate::parse_from_str(&time, "%Y-%m-%d") {
                                 Ok(date) => Some(date.and_hms(0, 0, 0)),
                                 Err(_) => {
-                                    let _ = msg.reply("Invalid ban end time. Please use the format \"yyyy-mm-dd[-hh:mm]\"");
+                                    let _ = msg.reply(&ctx, "Invalid ban end time. Please use the format \"yyyy-mm-dd[-hh:mm]\"");
                                     return Ok(());
                                 }
                             }
@@ -135,12 +148,14 @@ command!(ban(ctx, msg, args) {
         (discord_user, new_ban)
     };
 
-    let mut bans = data.get_mut::<Bans>().unwrap();
+    let bans = data.get_mut::<Bans>().unwrap();
     let vec = match bans.entry(discord_user.id) {
         Vacant(entry) => entry.insert(Vec::new()),
         Occupied(entry) => entry.into_mut(),
     };
     vec.push(new_ban);
 
-    let _ = msg.reply(&format!("<:banhammer:525343781441110017> Banned {}!", discord_user));
-});
+    let _ = msg.reply(&ctx, &format!("<:banhammer:525343781441110017> Banned {}!", discord_user));
+
+    Ok(())
+}

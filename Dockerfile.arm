@@ -2,7 +2,7 @@ FROM arm32v7/rust:1.33.0-slim
 
 RUN mkdir -p /usr/share/man/man1
 
-RUN apt-get update -y && apt-get install -y libssl-dev \
+RUN apt-get update -y && apt-get install -y \
     pkg-config \
     libsqlite3-dev \
     python3 \

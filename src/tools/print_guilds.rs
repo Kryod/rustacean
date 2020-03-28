@@ -44,7 +44,7 @@ struct Handler;
 impl EventHandler for Handler {
     fn ready(&self, ctx: Context, ready: Ready) {
         let guilds = ready.guilds.len();
-        let mut data = ctx.data.lock();
+        let mut data = ctx.data.write();
         let mut counter = data.get_mut::<GuildReadyCounter>().unwrap().lock().unwrap();
         counter.set_total(guilds);
         println!("{} guilds:", guilds);
@@ -52,7 +52,7 @@ impl EventHandler for Handler {
 
     fn guild_create(&self, ctx: Context, guild: Guild, is_new: bool) {
         if !is_new {
-            let mut data = ctx.data.lock();
+            let mut data = ctx.data.write();
             let mut counter = data.get_mut::<GuildReadyCounter>().unwrap().lock().unwrap();
             counter.add_ready();
         }
@@ -68,7 +68,7 @@ pub fn print_guilds() {
         let settings = crate::init_settings();
         let mut client = Client::new(&settings.discord_token, Handler).expect("Err creating client");
         {
-            let mut data = client.data.lock();
+            let mut data = client.data.write();
             data.insert::<GuildReadyCounter>(thread_counter);
         }
         client.start().expect("Client error");

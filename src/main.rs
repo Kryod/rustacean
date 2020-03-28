@@ -1,6 +1,5 @@
 #[macro_use] extern crate log;
 #[macro_use] extern crate diesel;
-#[macro_use] extern crate serenity;
 #[macro_use] extern crate serde_derive;
 
 pub mod commands;
@@ -12,25 +11,34 @@ pub mod dbl;
 pub mod file_logger;
 mod test;
 
+use commands::*;
 use lang_manager::LangManager;
 
-use serenity::client::bridge::gateway::{ ShardManager };
-use serenity::framework::standard::{ DispatchError, StandardFramework };
-use serenity::model::prelude::{ Ready, Message, ResumedEvent, UserId };
-use serenity::prelude::{ Client, Context, EventHandler };
-use serenity::model::permissions::Permissions;
-use serenity::http;
-use serenity::model::channel::Embed;
-use diesel::SqliteConnection;
-use diesel::r2d2::{ ConnectionManager, Pool };
+use serenity::{
+    http::{ self, client::Http },
+    client::bridge::gateway::ShardManager,
+    prelude::{ Client, Context, EventHandler },
+    model::{
+        channel::Embed,
+        prelude::{ Ready, Message, ResumedEvent, UserId },
+    },
+    framework::standard::{
+        DispatchError, StandardFramework, Args, CommandGroup, HelpOptions, CommandResult, CommandOptions, CheckResult, help_commands,
+        macros::{ group, check, help },
+    },
+};
+use diesel::{
+    SqliteConnection,
+    r2d2::{ ConnectionManager, Pool },
+};
 use typemap::Key;
-use std::io::{ Error, ErrorKind };
 
-use std::io::Read;
-use std::collections::{ HashSet, HashMap };
-use std::str::FromStr;
-use std::sync::{ Arc, Mutex };
-use std::process::Command;
+use std::{
+    sync::{ Arc, Mutex },
+    io::{ Error, ErrorKind, Read },
+    collections::{ HashSet, HashMap },
+    iter::FromIterator, str::FromStr, process::Command,
+};
 
 // A container type is created for inserting into the Client's `data`, which
 // allows for data to be accessible across all events and framework commands, or
@@ -105,8 +113,8 @@ impl EventHandler for Handler {
 
 fn presence_status_thread(user_id: UserId, ctx: Arc<Mutex<Context>>) {
     let dbl_api_key = {
-        let ctx_lock = ctx.lock().unwrap();
-        let data = ctx_lock.data.lock();
+        let ctx = ctx.lock().unwrap();
+        let data = ctx.data.read();
         let settings = data.get::<Settings>().unwrap().lock().unwrap();
         settings.dbl_api_key.clone()
     };
@@ -123,7 +131,7 @@ fn presence_status_thread(user_id: UserId, ctx: Arc<Mutex<Context>>) {
             set_game_presence_exec(&ctx.lock().unwrap());
             std::thread::sleep(std::time::Duration::from_secs(30));
 
-            let guilds = get_guilds();
+            let guilds = get_guilds(&ctx.lock().unwrap());
             match guilds {
                 Ok(count) => {
                     set_game_presence(&ctx.lock().unwrap(), &format!("On {} servers", count));
@@ -139,20 +147,21 @@ fn presence_status_thread(user_id: UserId, ctx: Arc<Mutex<Context>>) {
 }
 
 fn cargo_test_thread(settings: Settings) {
-    let (webhook_id, webhook_token, webhook_freq, webhook_role) = {
+    let (webhook_id, webhook_token, webhook_freq, webhook_role, discord_token) = {
         (
             settings.webhook_id,
             settings.webhook_token,
             settings.webhook_frequency,
             settings.webhook_role,
+            settings.discord_token,
         )
     };
+    if webhook_id.is_none() || webhook_token.is_none() || webhook_freq.is_none() || webhook_role.is_none() {
+        return;
+    }
 
     std::thread::spawn(move || {
         // Periodic tests to check if bot is broken
-        if webhook_id.is_none() || webhook_token.is_none() || webhook_freq.is_none() || webhook_role.is_none() {
-            return;
-        }
         let (webhook_id, webhook_token, webhook_freq, webhook_role) = (
             webhook_id.unwrap(),
             webhook_token.unwrap(),
@@ -161,12 +170,12 @@ fn cargo_test_thread(settings: Settings) {
         );
 
         let test_freq = std::time::Duration::from_secs(60 * webhook_freq);
+        let http_client = Http::new_with_token(&discord_token);
 
         loop {
             info!("Running test command!");
 
-            let webhook = http::get_webhook_with_token(webhook_id, &webhook_token)
-                .expect("valid webhook");
+            let webhook = http_client.get_webhook_with_token(webhook_id, &webhook_token).expect("Invalid webhook");
 
             let mut cargo = Command::new("cargo");
             let cargo_test = if cfg!(debug_assertions) {
@@ -184,7 +193,7 @@ fn cargo_test_thread(settings: Settings) {
                         .colour(serenity::utils::Colour::RED)
                         .description("Could not run test")
                         .field("Error", err, true));
-                    let _ = webhook.execute(false, |w| w
+                    let _ = webhook.execute(&http_client, false, |w| w
                         .content(&format!("<@&{}>, we have a problem!", webhook_role))
                         .username("Rustacean Alert")
                         .embeds(vec![embed]))
@@ -241,7 +250,7 @@ fn cargo_test_thread(settings: Settings) {
                 "Everything is fine :sunny:".into()
             };
 
-            let _ = webhook.execute(false, |w| w
+            let _ = webhook.execute(&http_client, false, |w| w
                         .content(&content)
                         .username("Rustacean Alert")
                         .embeds(vec![embed]))
@@ -290,11 +299,11 @@ impl Key for Bans {
     type Value = HashMap<serenity::model::prelude::UserId, Vec<models::Ban>>;
 }
 
-fn get_guilds() -> Result<usize, serenity::Error> {
+fn get_guilds(ctx: &Context) -> Result<usize, serenity::Error> {
     let mut count = 0;
     let mut last_guild_id = 0;
     loop {
-        let guilds = serenity::http::get_guilds(&serenity::http::GuildPagination::After(last_guild_id.into()), 100)?;
+        let guilds = ctx.http.get_guilds(&http::GuildPagination::After(last_guild_id.into()), 100)?;
         let len = guilds.len();
         count += len;
         if len < 100 {
@@ -334,6 +343,51 @@ fn init_logging(settings: &Settings) {
     ).unwrap();
 }
 
+#[help]
+fn rustacean_help(
+    context: &mut Context,
+    msg: &Message,
+    args: Args,
+    help_options: &'static HelpOptions,
+    groups: &[&'static CommandGroup],
+    owners: HashSet<UserId>
+) -> CommandResult {
+    help_commands::with_embeds(context, msg, args, help_options, groups, owners)
+}
+
+#[check]
+#[name = "Admin"]
+// Whether the check shall be tested in the help-system.
+#[check_in_help(true)]
+// Whether the check shall be displayed in the help-system.
+#[display_in_help(true)]
+fn admin_check(ctx: &mut Context, msg: &Message, _: &mut Args, _: &CommandOptions) -> CheckResult {
+    if let Some(member) = msg.member(&ctx.cache) {
+        if let Ok(permissions) = member.permissions(&ctx.cache) {
+            return permissions.administrator().into();
+        }
+    }
+
+    false.into()
+}
+
+#[group]
+#[commands(git, support, invite, exec, languages, versions, stats)]
+#[description = ":desktop: Basic"]
+struct General;
+
+#[group]
+#[checks(Admin)]
+#[commands(ban, unban)]
+#[description = ":star: Administrator"]
+struct Admin;
+
+#[group]
+#[owners_only]
+#[commands(logs)]
+#[description = ":robot: Bot owner"]
+struct Owner;
+
 fn main() {
     if tools::tools() {
         return;
@@ -345,6 +399,7 @@ fn main() {
 
     let settings = init_settings();
     let command_prefix = settings.command_prefix.clone();
+    let owners = HashSet::from_iter(settings.bot_owners.clone());
     init_logging(&settings);
 
     let mut client = Client::new(&settings.discord_token, Handler).expect("Err creating client");
@@ -356,23 +411,13 @@ fn main() {
         .expect("Could not build database connection pool.");
     let pool = Arc::new(pool);
 
-    let owners = match http::get_current_application_info() {
-        Ok(info) => {
-            let mut set = HashSet::new();
-            set.insert(info.owner.id);
-
-            set
-        },
-        Err(why) => panic!("Couldn't get application info: {:?}", why),
-    };
-
     models::Ban::cleanup_outdated_bans(&pool);
 
     let mut lang_manager = LangManager::new();
     lang_manager.check_available_languages();
 
     {
-        let mut data = client.data.lock();
+        let mut data = client.data.write();
         data.insert::<Settings>(Arc::new(Mutex::new(settings)));
         data.insert::<ShardManagerContainer>(Arc::clone(&client.shard_manager));
         data.insert::<LangManager>(Arc::new(Mutex::new(lang_manager)));
@@ -381,19 +426,19 @@ fn main() {
     }
 
     client.with_framework(StandardFramework::new()
-        .configure(|c| c
-            .owners(owners)
-            .prefix(&command_prefix))
-        .before(| ctx, msg, _cmd_name | {
-            let data = ctx.data.lock();
+    .configure(|c| c
+            .prefix(&command_prefix)
+            .owners(owners))
+        .before(|ctx, msg, _cmd_name| {
+            let data = ctx.data.read();
             let bans = data.get::<Bans>().unwrap();
             match bans.get(&msg.author.id) {
                 Some(bans) => {
-                    let banned = bans.iter().any(| ban | {
+                    let banned = bans.iter().any(|ban| {
                         ban.is_banned_for_guild(msg.guild_id)
                     });
                     if banned {
-                        let _ = msg.reply("You cannot run commands while being banned.");
+                        let _ = msg.reply(&ctx, "You cannot run commands while being banned.");
                     }
                     !banned
                 },
@@ -403,80 +448,28 @@ fn main() {
         // Set a function that's called whenever a command's execution didn't complete for one
         // reason or another. For example, when a user has exceeded a rate-limit or a command
         // can only be performed by the bot owner.
-        .on_dispatch_error(|_ctx, msg, error| {
+        .on_dispatch_error(|ctx, msg, error| {
             match error {
-                DispatchError::RateLimited(seconds) => {
-                    let _ = msg.reply(&format!("Try this again in {} seconds.", seconds));
+                DispatchError::Ratelimited(seconds) => {
+                    let _ = msg.reply(ctx, &format!("Try this again in {} seconds.", seconds));
                 },
-                DispatchError::OnlyForOwners | DispatchError::LackingRole | DispatchError::BlockedUser | DispatchError::LackOfPermissions(_) => {
-                    let _ = msg.reply("You are not allowed to do this.");
+                DispatchError::OnlyForOwners | DispatchError::LackingRole | DispatchError::BlockedUser | DispatchError::LackingPermissions(_) => {
+                    let _ = msg.reply(ctx, "You are not allowed to do this.");
                 },
                 DispatchError::BlockedGuild => {
-                    let _ = msg.reply("Rustacean is not available on this server because its owner has been banned.");
+                    let _ = msg.reply(ctx, "Rustacean is not available on this server because its owner has been banned.");
                 },
                 _ => {},
             };
         })
-        .help(serenity::framework::standard::help_commands::with_embeds)
+        .help(&RUSTACEAN_HELP)
         // Time out for exec: Can't be used more than 2 times per 30 seconds, with a 5 second delay
         //.bucket("exec_bucket", 5, 30, 2)
         // Can't be used more than once per 5 seconds:
-        .simple_bucket("exec_bucket", 5)
-        .group(":desktop: Basic", |g| g
-            .command("git", |c| c
-                .cmd(commands::git::git)
-                .batch_known_as(["github", "repository", "repo"].iter())
-                .desc("Get a link to Rustacean's GitHub repository."))
-            .command("support", |c| c
-                .cmd(commands::support::support)
-                .desc("Get a link to Rustacean's support Discord server."))
-            .command("invite", |c| c
-                .cmd(commands::invite::invite)
-                .desc("Get an invite link to add Rustacean to other servers."))
-            .command("exec", |c| c
-                .cmd(commands::exec::exec)
-                .batch_known_as(["execute", "run", "code"].iter())
-                .desc(&format!("Executes a code snippet. Your message needs to look like this:\r\n{}exec\r\n\\`\\`\\`language\r\n\r\ncode...\r\n\\`\\`\\`\r\nwhere `language` is the language of your choice.\r\nFor example:\r\n{}exec\r\n\\`\\`\\`javascript\r\nconsole.log(\"hi!\");\r\n\\`\\`\\`", command_prefix, command_prefix))
-                .bucket("exec_bucket"))
-            .command("languages", |c| c
-                .cmd(commands::languages::languages)
-                .batch_known_as(["langs", "language", "lang"].iter())
-                .desc(&format!("Get a list of available programming languages for the `{}exec` command.", command_prefix)))
-            .command("versions", |c| c
-                .cmd(commands::versions::versions)
-                .batch_known_as(["version", "versions", "ver"].iter())
-                .desc(&format!("Get a list of versions for the available programming languages for the `{}exec` command.", command_prefix)))
-            .command("stats", |c| c
-                .cmd(commands::stats::stats)
-                .batch_known_as(["stats", "stat"].iter())
-                .desc(&format!("Gets statistics about usage of languages for the `{}exec` command.", command_prefix)))
-        )
-        .group(":star: Administrator", |g| g
-            .command("ban", |c| c
-                .cmd(commands::ban::ban)
-                .desc("Ban a user from using the bot. This command will not ban the target user from the Discord server, however.")
-                .example("@user 2019-11-24")
-                .guild_only(true)
-                .required_permissions(Permissions::ADMINISTRATOR)
-                .owner_privileges(true))
-            .command("unban", |c| c
-                .cmd(commands::unban::unban)
-                .desc("Lifts a previously issued ban. This command will not unban the target user from the Discord server, however.")
-                .example("@user")
-                .guild_only(true)
-                .required_permissions(Permissions::ADMINISTRATOR)
-                .owner_privileges(true))
-        )
-        .group(":robot: Bot owner", |g| g
-            .command("quit", |c| c
-                .cmd(commands::owner::quit)
-                .owners_only(true))
-            .command("logs", |c| c
-                .cmd(commands::logs::logs)
-                .desc("Returns logs of the bot. You can specify a string to search (INFO, DEBUG, ...). By default it gives the last 11 lignes.")
-                .example("20 INFO")
-                .owners_only(true))
-        )
+        .bucket("exec_bucket", |b| b.delay(5))
+        .group(&GENERAL_GROUP)
+        .group(&ADMIN_GROUP)
+        .group(&OWNER_GROUP)
     );
 
     let shard_manager = client.shard_manager.clone();
@@ -508,7 +501,7 @@ fn main() {
 }
 
 fn get_command_prefix(ctx: &Context) -> String {
-    let data = ctx.data.lock();
+    let data = ctx.data.read();
     let settings = data.get::<Settings>().unwrap().lock().unwrap();
     settings.command_prefix.clone()
 }
@@ -529,7 +522,7 @@ fn set_game_presence_exec(ctx: &Context) {
 }
 
 fn set_game_presence(ctx: &Context, game_name: &str) {
-    let game = serenity::model::gateway::Game::playing(game_name);
+    let game = serenity::model::gateway::Activity::playing(game_name);
     let status = serenity::model::user::OnlineStatus::Online;
     ctx.set_presence(Some(game), status);
 }

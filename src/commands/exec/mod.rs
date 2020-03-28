@@ -7,9 +7,10 @@ use std::io::{ Error, ErrorKind };
 use std::time::{ Instant, Duration };
 
 use duct::{ cmd, Expression };
-use serenity::model::{
-    id::UserId,
-    channel::Message,
+use serenity::{
+    prelude::Context,
+    model::{ id::UserId, channel::Message },
+    framework::standard::{ CommandResult, macros::command },
 };
 use rand::distributions::Alphanumeric;
 
@@ -63,7 +64,7 @@ mod vb;
 pub use self::vb::Vb;
 
 #[derive(Debug, Default)]
-pub struct CommandResult {
+pub struct ExecResult {
     pub exit_code: Option<i32>,
     pub stdout: String,
     pub stderr: String,
@@ -103,14 +104,17 @@ pub fn get_lang(lang_manager: &LangManager, lang_code: &str) -> Result<BoxedLang
     }
 }
 
-pub fn run_code(settings: &Settings, mut code: String, lang: BoxedLang, author: UserId, mut reply: Option<&mut Message>) -> Result<(CommandResult, CommandResult, String, String), Error> {
-    let mut append_to_reply_msg = |text: &str| {
-        if let Some(ref mut reply) = reply {
-            let new_content = format!("{}\n{}", reply.content, text);
-            let _ = reply.edit(|m| m.content(new_content));
+fn append_to_msg(ctx: &Option<&mut Context>, msg: &mut Option<&mut Message>, line: &str) {
+    if let Some(ref mut msg) = msg {
+        if let Some(ctx) = ctx {
+            let new_content = format!("{}\n{}", msg.content, line);
+            let _ = msg.edit(ctx, |m| m.content(new_content));
         };
     };
-    append_to_reply_msg("Saving code...");
+}
+
+pub fn run_code(settings: &Settings, mut code: String, lang: BoxedLang, author: UserId, ctx: Option<&mut Context>, mut reply: Option<&mut Message>) -> Result<(ExecResult, ExecResult, String, String), Error> {
+    append_to_msg(&ctx, &mut reply, "Saving code...");
     let src_path = match save_code(&code, author, &lang.get_source_file_ext()) {
         Ok(path) => path,
         Err(e) => {
@@ -135,7 +139,7 @@ pub fn run_code(settings: &Settings, mut code: String, lang: BoxedLang, author: 
     let out_path = lang.get_out_path(&path_in_container);
 
     // Start container
-    append_to_reply_msg("Starting session...");
+    append_to_msg(&ctx, &mut reply, "Starting session...");
     let cmd = cmd!("docker", "run", "--network=none", "--kernel-memory", &settings.kernel_memory, "--cpus", &settings.cpu_load, "--memory", &settings.ram_load, "-t", "-d", image);
     let container_id = cmd.stdout_capture().read()?;
     let cleanup = || {
@@ -145,7 +149,7 @@ pub fn run_code(settings: &Settings, mut code: String, lang: BoxedLang, author: 
     };
 
     // Copy source file to container
-    append_to_reply_msg("Copying code snippet...");
+    append_to_msg(&ctx, &mut reply, "Copying code snippet...");
     let cmd = cmd!("docker", "cp", src_path.to_str().unwrap(), format!("{}:{}", container_id, path_in_container.to_str().unwrap()));
     match cmd.run() {
         Ok(_) => { },
@@ -156,11 +160,11 @@ pub fn run_code(settings: &Settings, mut code: String, lang: BoxedLang, author: 
     };
 
     // Compile code if necessary
-    let compilation: Result<CommandResult, Error> = match lang.get_compiler_command(&path_in_container, &out_path) {
+    let compilation: Result<ExecResult, Error> = match lang.get_compiler_command(&path_in_container, &out_path) {
         Some(command) => {
-            append_to_reply_msg("Compiling code snippet...");
+            append_to_msg(&ctx, &mut reply, "Compiling code snippet...");
             let commands = command.split("&&").map(|command| command.trim());
-            let mut res = Ok(CommandResult::default());
+            let mut res = Ok(ExecResult::default());
             info!("Compiling {} code", lang.get_lang_name());
             for command in commands {
                 let mut args = vec!["exec", "-w", "/home", &container_id];
@@ -182,7 +186,7 @@ pub fn run_code(settings: &Settings, mut code: String, lang: BoxedLang, author: 
             // For interpreted languages, we just copy the source file to the destination path
             let cmd = cmd!("docker", "cp", src_path.to_str().unwrap(), format!("{}:{}", container_id, out_path.to_str().unwrap()));
             let _ = cmd.run();
-            Ok(CommandResult::default())
+            Ok(ExecResult::default())
         },
     };
     // Exit prematurely if compilation fails
@@ -196,16 +200,16 @@ pub fn run_code(settings: &Settings, mut code: String, lang: BoxedLang, author: 
 
     // Execute code
     let execution = if compilation.timed_out {
-        CommandResult::default()
+        ExecResult::default()
     } else {
         match compilation.exit_code {
             Some(code) if code != 0 => {
                 // Return a default value if compilation failed
-                CommandResult::default()
+                ExecResult::default()
             },
             _ => {
                 // Compilation succeeded, run the snippet
-                append_to_reply_msg("Running code snippet...");
+                append_to_msg(&ctx, &mut reply, "Running code snippet...");
                 info!("Executing {} code", lang.get_lang_name());
                 let exec_command = lang.get_execution_command(&out_path);
                 let mut args = vec!["exec", "-w", "/home", &container_id];
@@ -222,22 +226,26 @@ pub fn run_code(settings: &Settings, mut code: String, lang: BoxedLang, author: 
         }
     };
 
-    append_to_reply_msg("Closing session...");
+    append_to_msg(&ctx, &mut reply, "Closing session...");
     cleanup();
     Ok((compilation, execution, code, lang.get_lang_name()))
 }
 
-command!(exec(ctx, msg, _args) {
+#[command]
+#[aliases("execute", "run", "code")]
+#[description = "Executes a code snippet. Your message needs to look like this:\r\n~exec\r\n\\`\\`\\`language\r\n\r\ncode...\r\n\\`\\`\\`\r\nwhere `language` is the language of your choice.\r\nFor example:\r\n~exec\r\n\\`\\`\\`javascript\r\nconsole.log(\"hi!\");\r\n\\`\\`\\`"]
+#[bucket = "exec_bucket"]
+fn exec(ctx: &mut Context, msg: &Message) -> CommandResult {
     let arg = msg.content.clone();
     let split = arg.split("```");
-    let data = ctx.data.lock();
+    let data = ctx.data.read();
     let settings = data.get::<Settings>().unwrap().lock().unwrap().clone();
 
     let langs = data.get::<LangManager>().unwrap().lock().unwrap().get_languages_list();
     drop(data);
 
     if split.clone().nth(1).is_none() {
-        let _ = msg.reply(&format!("Please add a code section to your message\nExample:\n{}exec\n\\`\\`\\`language\n**code**\n\\`\\`\\`\nHere are the languages available: {}", settings.command_prefix, langs));
+        let _ = msg.reply(&ctx, &format!("Please add a code section to your message\nExample:\n{}exec\n\\`\\`\\`language\n**code**\n\\`\\`\\`\nHere are the languages available: {}", settings.command_prefix, langs))?;
         return Ok(());
     }
     let code = split
@@ -245,14 +253,14 @@ command!(exec(ctx, msg, _args) {
         .collect::<Vec<_>>()[1];
 
     let mut split = code.split('\n');
-    let (lang_code, mut code) = match split.next() {
+    let (lang_code, code) = match split.next() {
         Some(line) => {
             let code = split.collect::<Vec<_>>().join("\n");
             let lang = line.trim().to_ascii_lowercase();
             (lang, code)
         },
         None => {
-            let _ = msg.reply(&format!(":x: Please specify a language\nHere are the languages available: {}", langs));
+            let _ = msg.reply(&ctx, &format!(":x: Please specify a language\nHere are the languages available: {}", langs))?;
             return Ok(());
         },
     };
@@ -262,20 +270,20 @@ command!(exec(ctx, msg, _args) {
         let lang = {
             // We make sure to lock the data in a separate code block,
             // Otherwise we would block the mutex through the entire compiling and/or executing phases
-            let data = ctx.data.lock();
+            let data = ctx.data.read();
             let mngr = data.get::<LangManager>().unwrap().lock().unwrap();
             get_lang(&mngr, lang_code.as_ref())
         };
         let lang = match lang {
             Ok(lang) => lang,
             Err(e) => {
-                let _ = msg.reply(&format!(":x: {}", e));
+                let _ = msg.reply(&ctx, &format!(":x: {}", e))?;
                 return Ok(());
             }
         };
 
         {
-            let data = ctx.data.lock();
+            let data = ctx.data.read();
             let db = data.get::<DbPool>().unwrap();
             match models::Snippet::save(code.clone(), &lang.get_lang_name(), msg.author.id, msg.guild_id, db) {
                 Ok(_) => {},
@@ -283,19 +291,19 @@ command!(exec(ctx, msg, _args) {
             };
         }
 
-        reply_msg = match msg.channel_id.say(format!("<@{}>,", msg.author.id)) {
+        reply_msg = match msg.channel_id.say(&ctx, format!("<@{}>,", msg.author.id)) {
             Err(e) => {
                 error!("An error occured while replying to an exec query: {}", e);
                 return Ok(());
             },
             Ok(msg) => msg,
         };
-        match run_code(&settings, code, lang.clone(), msg.author.id, Some(&mut reply_msg)) {
+        match run_code(&settings, code, lang.clone(), msg.author.id, Some(ctx), Some(&mut reply_msg)) {
             Ok((compilation, execution, _processed_code, _lang_name)) => {
                 (compilation, execution, lang)
             },
             Err(e) => {
-                let _ = msg.reply(&e.to_string());
+                let _ = msg.reply(&ctx, &e.to_string())?;
                 return Ok(());
             }
         }
@@ -307,14 +315,14 @@ command!(exec(ctx, msg, _args) {
     execution.stdout = pre_process_output(execution.stdout);
 
     {
-        let data = ctx.data.lock();
+        let data = ctx.data.read();
         let db = data.get::<DbPool>().unwrap();
         let mut stat = models::LangStat::get(&lang.get_lang_name(), db);
         stat.increment_snippets_count(db);
     }
 
     let header = format!("<@{}>,", msg.author.id);
-    if let Err(why) = reply_msg.edit(|m| m.content(header).embed(|mut e| {
+    if let Err(why) = reply_msg.edit(ctx, |m| m.content(header).embed(|mut e| {
         let mut fields_lang = vec![("Language", lang.get_lang_name(), true)];
         let mut fields_out = Vec::<(&str, String, bool)>::new();
         let mut color_red = false;
@@ -423,7 +431,8 @@ command!(exec(ctx, msg, _args) {
     }
 
     info!("Done");
-});
+    Ok(())
+}
 
 fn format_code_output(mut text: String, max_length: usize) -> (bool, String) {
     let truncated = if text.len() > max_length - 7 {
@@ -489,7 +498,7 @@ fn save_code(code: &str, author: UserId, ext: &str) -> Result<PathBuf, Error> {
     Ok(path)
 }
 
-fn run_command(cmd: Expression, timeout_seconds: u64) -> Result<CommandResult, Error> {
+fn run_command(cmd: Expression, timeout_seconds: u64) -> Result<ExecResult, Error> {
     let child = cmd
         .unchecked() // important! allows us to get stderr instead of an `Error` if the process exits with a non-zero exit code
         .stdout_capture()
@@ -507,7 +516,7 @@ fn run_command(cmd: Expression, timeout_seconds: u64) -> Result<CommandResult, E
         if timeout_seconds != 0 && start.elapsed() >= timeout {
             child.kill()?;
 
-            return Ok(CommandResult {
+            return Ok(ExecResult {
                 exit_code: None,
                 stdout: "".into(),
                 stderr: "".into(),
@@ -528,7 +537,7 @@ fn run_command(cmd: Expression, timeout_seconds: u64) -> Result<CommandResult, E
         .map_err(| e | Error::new(ErrorKind::InvalidData, e))?
         .to_owned();
 
-    Ok(CommandResult {
+    Ok(ExecResult {
         exit_code: output.status.code(),
         stdout,
         stderr,
