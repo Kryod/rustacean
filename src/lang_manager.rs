@@ -9,6 +9,7 @@ use crate::commands::exec::*;
 pub struct LangManager {
     languages: HashMap<Vec<String>, Arc<Box<dyn Language + Sync + Send>>>,
     availability: HashMap<String, bool>,
+    versions: HashMap<String, Option<String>>,
 }
 
 impl Key for LangManager {
@@ -26,6 +27,7 @@ impl LangManager {
         let mut mngr = LangManager {
             languages: HashMap::new(),
             availability: HashMap::new(),
+            versions: HashMap::new()
         };
 
         mngr.languages.insert(vec![
@@ -97,6 +99,16 @@ impl LangManager {
         }
     }
 
+    pub fn get_language_version(&self, lang: &Box<dyn Language + Sync + Send>) -> Option<String> {
+        match self.versions.get(&lang.get_lang_name()) {
+            Some(versions) => versions.clone(),
+            None => {
+                error!("Language {} does not exist", &lang.get_lang_name());
+                None
+            },
+        }
+    }
+
     pub fn get_languages_list(&self) -> String {
         let mut langs: Vec<String> = Vec::new();
         for (lang_codes, boxed_lang) in self.languages.iter() {
@@ -112,6 +124,48 @@ impl LangManager {
 
     pub fn get_languages(&self) -> &HashMap<Vec<String>, Arc<Box<dyn Language + Sync + Send>>> {
         &self.languages
+    }
+
+    pub fn check_languages_versions(&mut self) {
+        info!("Checking languages versions");
+        let mut results: Vec<(bool, String)> = Vec::new();
+
+        for boxed_lang in self.languages.values() {
+            //let command = boxed_lang.check_compiler_or_interpreter().stdout_null().stderr_null();
+            let lang_name = boxed_lang.get_lang_name();
+            let low_lang_name = lang_name.to_lowercase();
+            self.versions.insert(lang_name.clone(), None);
+            //let lang_command: Vec<OsString> = boxed_lang.check_compiler_or_interpreter().split(" ").collect::<Vec<&str>>().iter().map(|&x| OsString::from(x)).collect();
+            match cmd!("docker", "run", "-t", format!("rustacean-{}", low_lang_name), "/bin/bash", "-c", boxed_lang.check_compiler_or_interpreter()).stdout_capture().run() {
+                Ok(res) => {
+                    if res.status.success() {
+                        let mut output = String::from(std::str::from_utf8(&res.stdout).unwrap());
+                        output.truncate(50);
+                        results.push((true, format!("    - {}: {}", &lang_name, output)));
+                        self.versions.insert(lang_name, Some(output));
+                    } else {
+                        results.push((false, format!("    - {}: Unavailable", &lang_name)));
+                    }
+                },
+                Err(e) => {
+                    results.push((false, format!("    - {}: Unavailable ({})", &lang_name, e)));
+                },
+            };
+        }
+
+        for (is_info, msg) in results {
+            if is_info {
+                info!("{}", msg);
+            } else {
+                warn!("{}", msg);
+            }
+        }
+
+        match cmd!("docker", "image", "prune", "-f").run() {
+            Ok(_) => {},
+            Err(e) => panic!(e),
+        };
+
     }
 
     pub fn check_available_languages(&mut self) {

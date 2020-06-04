@@ -1,7 +1,5 @@
 use std::path::PathBuf;
 
-use duct::{ cmd, Expression };
-
 use crate::commands::exec::language::Language;
 
 #[derive(Debug)]
@@ -56,7 +54,7 @@ public class {} {{
         format!("java {}", path.to_str().unwrap())
     }
 
-    fn check_compiler_or_interpreter(&self) -> Expression {
-        cmd!("javac", "-version")
+    fn check_compiler_or_interpreter(&self) -> String {
+        String::from("javac -version")
     }
 }

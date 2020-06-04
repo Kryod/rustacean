@@ -1,6 +1,5 @@
 use std::path::PathBuf;
 
-use duct::Expression;
 
 pub trait Language {
     fn get_image_name(&self) -> String;
@@ -19,7 +18,7 @@ pub trait Language {
     fn get_execution_command(&self, path: &PathBuf) -> String {
         String::from(path.to_str().unwrap())
     }
-    fn check_compiler_or_interpreter(&self) -> Expression;
+    fn check_compiler_or_interpreter(&self) -> String;
     fn get_logo_url(&self) -> String {
         let name = self.get_lang_name().to_lowercase();
         format!("https://raw.githubusercontent.com/Kryod/rustacean/master/logos/{}.png", name)

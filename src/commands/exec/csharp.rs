@@ -1,7 +1,5 @@
 use std::path::PathBuf;
 
-use duct::{ cmd, Expression };
-
 use crate::commands::exec::language::Language;
 
 #[derive(Debug)]
@@ -68,11 +66,11 @@ public class Program
         }
     }
 
-    fn check_compiler_or_interpreter(&self) -> Expression {
+    fn check_compiler_or_interpreter(&self) -> String {
         if cfg!(windows) {
-            cmd!("csc", "/version")
+            String::from("csc /version")
         } else {
-            cmd!("mcs", "--version")
+            String::from("mcs --version")
         }
     }
 }

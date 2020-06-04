@@ -20,4 +20,4 @@ reqwest = { version = "0.10.4", default-features = false, features = [ "json", "
 
 [dependencies.serenity]
 features = ["cache", "framework", "standard_framework", "rustls_backend"]
-version = "0.8.0"
+version = "0.8.6"

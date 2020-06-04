@@ -1,7 +1,5 @@
 use std::path::PathBuf;
 
-use duct::{ cmd, Expression };
-
 use crate::commands::exec::language::Language;
 
 #[derive(Debug)]
@@ -34,7 +32,7 @@ impl Language for Python {
         format!("{} {}",self.get_interpreter(), path.to_str().unwrap())
     }
 
-    fn check_compiler_or_interpreter(&self) -> Expression {
-        cmd!(self.get_interpreter(), "--version")
+    fn check_compiler_or_interpreter(&self) -> String {
+        format!("{} --version",self.get_interpreter())
     }
 }

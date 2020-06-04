@@ -1,7 +1,5 @@
 use std::path::PathBuf;
 
-use duct::{ cmd, Expression };
-
 use crate::commands::exec::language::Language;
 
 #[derive(Debug)]
@@ -36,7 +34,7 @@ impl Language for C {
         Some(format!("gcc {} -o {}", src_path.to_str().unwrap(), exe_path.to_str().unwrap()))
     }
 
-    fn check_compiler_or_interpreter(&self) -> Expression {
-        cmd!("gcc", "--version")
+    fn check_compiler_or_interpreter(&self) -> String {
+        String::from("gcc --version")
     }
 }

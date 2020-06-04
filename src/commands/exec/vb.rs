@@ -1,7 +1,5 @@
 use std::path::PathBuf;
 
-use duct::{ cmd, Expression };
-
 use crate::commands::exec::language::Language;
 
 #[derive(Debug)]
@@ -63,11 +61,11 @@ End Module", code);
         }
     }
 
-    fn check_compiler_or_interpreter(&self) -> Expression {
+    fn check_compiler_or_interpreter(&self) -> String {
         if cfg!(windows) {
-            cmd!(self.get_compiler(), "/version")
+            format!("{} /version", self.get_compiler())
         } else {
-            cmd!(self.get_compiler(), "/nologo", "/?")
+            format!("{} /nologo /?", self.get_compiler())
         }
     }
 }

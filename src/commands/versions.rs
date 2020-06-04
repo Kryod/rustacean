@@ -12,9 +12,14 @@ fn versions(ctx: &mut Context, msg: &Message) -> CommandResult {
     let mut fields: Vec<(String, String, bool)> = Vec::new();
     for boxed_lang in lang_manager.get_languages().values() {
         if lang_manager.is_language_available(&(*boxed_lang)) {
+            let version = lang_manager.get_language_version(&(*boxed_lang));
+            let version_str = match version {
+                Some(version) => version,
+                None => String::from("Not Available")
+            };
             fields.push((
                 boxed_lang.get_lang_name(),
-                boxed_lang.check_compiler_or_interpreter().stdout_capture().read().unwrap(),
+                version_str,
                 true
             ));
         }

@@ -16,7 +16,6 @@ use lang_manager::LangManager;
 
 use serenity::{
     http::{ self, client::Http },
-    client::bridge::gateway::ShardManager,
     prelude::{ Client, Context, EventHandler },
     model::{
         channel::Embed,
@@ -40,14 +39,6 @@ use std::{
     iter::FromIterator, str::FromStr, process::Command,
 };
 
-// A container type is created for inserting into the Client's `data`, which
-// allows for data to be accessible across all events and framework commands, or
-// anywhere else that has a copy of the `data` Arc.
-struct ShardManagerContainer;
-
-impl Key for ShardManagerContainer {
-    type Value = Arc<serenity::prelude::Mutex<ShardManager>>;
-}
 
 #[derive(Default, Deserialize, Clone)]
 pub struct Settings {
@@ -89,9 +80,10 @@ impl EventHandler for Handler {
                     info!("Connected as {}", ready.user.name);
                     info!("Open this link in a web browser to invite {} to a Discord server:\r\nhttps://discordapp.com/oauth2/authorize?client_id={}&scope=bot&permissions=378944", ready.user.name, ready.user.id);
                 },
-                1 => presence_status_thread(ready.user.id, ctx),
                 _ => { },
             };
+
+            presence_status_thread(ready.user.id, ctx);
 
             println!(
                 "{} is connected on shard {}/{}!",
@@ -415,11 +407,11 @@ fn main() {
 
     let mut lang_manager = LangManager::new();
     lang_manager.check_available_languages();
+    lang_manager.check_languages_versions();
 
     {
         let mut data = client.data.write();
         data.insert::<Settings>(Arc::new(Mutex::new(settings)));
-        data.insert::<ShardManagerContainer>(Arc::clone(&client.shard_manager));
         data.insert::<LangManager>(Arc::new(Mutex::new(lang_manager)));
         data.insert::<DbPool>(pool.clone());
         data.insert::<Bans>(models::Ban::get_bans(&pool));
@@ -472,30 +464,10 @@ fn main() {
         .group(&OWNER_GROUP)
     );
 
-    let shard_manager = client.shard_manager.clone();
-
-    std::thread::spawn(move || {
-        loop {
-            std::thread::sleep(std::time::Duration::from_secs(30));
-
-            let lock = shard_manager.lock();
-            let shard_runners = lock.runners.lock();
-
-            for (id, runner) in shard_runners.iter() {
-                println!(
-                    "Shard ID {} is {} with a latency of {:?}",
-                    id,
-                    runner.stage,
-                    runner.latency,
-                );
-            }
-        }
-    });
-
     snippets_cleanup_thread();
     cargo_test_thread(init_settings());
 
-    if let Err(why) = client.start_shards(2) {
+    if let Err(why) = client.start() {
         error!("Client error: {:?}", why);
     }
 }

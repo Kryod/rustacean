@@ -1,7 +1,5 @@
 use std::path::PathBuf;
 
-use duct::{ cmd, Expression };
-
 use crate::commands::exec::language::Language;
 
 #[derive(Debug)]
@@ -33,7 +31,7 @@ impl Language for Asmx64 {
         //    .then(cmd!("ld", format!("{}.o", self.get_file_name(src_path)), "-o", exe_path)))
     }
 
-    fn check_compiler_or_interpreter(&self) -> Expression {
-        cmd!("nasm", "-version").then(cmd!("ld", "-version"))
+    fn check_compiler_or_interpreter(&self) -> String {
+        String::from("nasm -version && ld -version")
     }
 }
