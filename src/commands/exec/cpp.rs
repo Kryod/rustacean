@@ -23,7 +23,10 @@ impl Language for Cpp {
 
         let re = Regex::new(r"(?s)(int\s+main\s*\(.*\))").unwrap();
         if !re.is_match(&code) {
-            let result = format!("#include <iostream>\r\nint main(int argc, char* argv[]) {{\r\n{}\r\n}}", code);
+            let result = format!(
+                "#include <iostream>\r\nint main(int argc, char* argv[]) {{\r\n{}\r\n}}",
+                code
+            );
             return Some(result);
         }
 
@@ -31,7 +34,11 @@ impl Language for Cpp {
     }
 
     fn get_compiler_command(&self, src_path: &PathBuf, exe_path: &PathBuf) -> Option<String> {
-        Some(format!("g++ {} -o {}", src_path.to_str().unwrap(), exe_path.to_str().unwrap()))
+        Some(format!(
+            "g++ {} -o {}",
+            src_path.to_str().unwrap(),
+            exe_path.to_str().unwrap()
+        ))
     }
 
     fn check_compiler_or_interpreter(&self) -> String {

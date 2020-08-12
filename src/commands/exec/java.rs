@@ -7,7 +7,13 @@ pub struct Java;
 
 impl Java {
     fn get_class_name(&self, src_path: &PathBuf) -> String {
-        src_path.with_extension("").file_name().unwrap().to_str().unwrap().into()
+        src_path
+            .with_extension("")
+            .file_name()
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .into()
     }
 }
 
@@ -31,14 +37,20 @@ impl Language for Java {
 
         let re = Regex::new(r"(?s)((?P<start>.*class\s+)(?P<name>.*?)(?P<end>\s*\{\s*public\s+static\s+void\s+main\s*\(.*\).*))").unwrap();
         if !re.is_match(&code) {
-            Some(format!(r"
+            Some(format!(
+                r"
 public class {} {{
     public static void main(String[] args) {{
         {}
     }}
-}}", class_name, code))
+}}",
+                class_name, code
+            ))
         } else {
-            Some(re.replace(code, format!("$start {} $end", class_name).as_str()).into())
+            Some(
+                re.replace(code, format!("$start {} $end", class_name).as_str())
+                    .into(),
+            )
         }
     }
 

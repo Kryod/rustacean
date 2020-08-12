@@ -3,43 +3,34 @@ use std::path::PathBuf;
 use crate::commands::exec::language::Language;
 
 #[derive(Debug)]
-pub struct Asmx64;
+pub struct Typescript;
 
-impl Asmx64 {
-    fn get_file_name(&self, src_path: &PathBuf) -> String {
-        src_path
-            .with_extension("")
-            .file_name()
-            .unwrap()
-            .to_str()
-            .unwrap()
-            .into()
-    }
-}
-
-impl Language for Asmx64 {
+impl Language for Typescript {
     fn get_image_name(&self) -> String {
-        "rustacean-asm64".into()
+        "rustacean-typescript".into()
     }
 
     fn get_lang_name(&self) -> String {
-        "Asm64".into()
+        "TypeScript".into()
     }
 
     fn get_source_file_ext(&self) -> String {
-        ".asm".into()
+        ".ts".into()
     }
 
     fn get_compiler_command(&self, src_path: &PathBuf, exe_path: &PathBuf) -> Option<String> {
         Some(format!(
-            "nasm -f elf64 {} && ld {}.o -o {}",
+            "tsc {} --outFile {}.js",
             src_path.to_str().unwrap(),
-            self.get_file_name(src_path),
             exe_path.to_str().unwrap()
         ))
     }
 
+    fn get_execution_command(&self, path: &PathBuf) -> String {
+        format!("node {}.js", path.to_str().unwrap())
+    }
+
     fn check_compiler_or_interpreter(&self) -> String {
-        String::from("nasm -version && ld -version")
+        String::from("tsc -v")
     }
 }

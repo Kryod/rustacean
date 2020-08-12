@@ -1,6 +1,5 @@
 use std::path::PathBuf;
 
-
 pub trait Language {
     fn get_image_name(&self) -> String;
     fn get_lang_name(&self) -> String;
@@ -21,6 +20,9 @@ pub trait Language {
     fn check_compiler_or_interpreter(&self) -> String;
     fn get_logo_url(&self) -> String {
         let name = self.get_lang_name().to_lowercase();
-        format!("https://raw.githubusercontent.com/Kryod/rustacean/master/logos/{}.png", name)
+        format!(
+            "https://raw.githubusercontent.com/Kryod/rustacean/master/logos/{}.png",
+            name
+        )
     }
 }

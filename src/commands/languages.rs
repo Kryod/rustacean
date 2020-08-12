@@ -1,11 +1,10 @@
 use crate::LangManager;
 
 use serenity::{
-    prelude::Context,
+    framework::standard::{macros::command, CommandResult},
     model::channel::Message,
-    framework::standard::{ CommandResult, macros::command },
+    prelude::Context,
 };
-
 
 #[command]
 #[aliases("langs", "language", "lang")]
@@ -18,19 +17,26 @@ fn languages(ctx: &mut Context, msg: &Message) -> CommandResult {
         if lang_manager.is_language_available(&(*boxed_lang)) {
             fields.push((
                 boxed_lang.get_lang_name(),
-                format!("({})", lang_codes.iter().map(|code| format!("`{}`", code)).collect::<Vec<String>>().join(", ")),
-                true
+                format!(
+                    "({})",
+                    lang_codes
+                        .iter()
+                        .map(|code| format!("`{}`", code))
+                        .collect::<Vec<String>>()
+                        .join(", ")
+                ),
+                true,
             ));
         }
     }
     fields.sort();
 
-    let _ = msg.channel_id.send_message(&ctx, |m| m
-        .embed(|e| e
-            .title("Languages")
-            .description("A list of available languages for the `exec` command.")
-            .fields(fields)
-        )
-    )?;
+    let _ = msg.channel_id.send_message(&ctx, |m| {
+        m.embed(|e| {
+            e.title("Languages")
+                .description("A list of available languages for the `exec` command.")
+                .fields(fields)
+        })
+    })?;
     Ok(())
 }

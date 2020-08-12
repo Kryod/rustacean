@@ -29,10 +29,10 @@ impl Language for Python {
     }
 
     fn get_execution_command(&self, path: &PathBuf) -> String {
-        format!("{} {}",self.get_interpreter(), path.to_str().unwrap())
+        format!("{} {}", self.get_interpreter(), path.to_str().unwrap())
     }
 
     fn check_compiler_or_interpreter(&self) -> String {
-        format!("{} --version",self.get_interpreter())
+        format!("{} --version", self.get_interpreter())
     }
 }

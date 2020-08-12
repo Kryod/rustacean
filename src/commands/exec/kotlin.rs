@@ -7,7 +7,13 @@ pub struct Kotlin;
 
 impl Kotlin {
     fn get_class_name(&self, src_path: &PathBuf) -> String {
-        src_path.with_extension("").file_name().unwrap().to_str().unwrap().into()
+        src_path
+            .with_extension("")
+            .file_name()
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .into()
     }
 
     fn get_compiler(&self) -> String {
@@ -49,7 +55,12 @@ impl Language for Kotlin {
     }
 
     fn get_compiler_command(&self, src_path: &PathBuf, _exe_path: &PathBuf) -> Option<String> {
-        Some(format!("{} {} -include-runtime -d {}.jar", self.get_compiler(), src_path.to_str().unwrap(), self.get_class_name(src_path)))
+        Some(format!(
+            "{} {} -include-runtime -d {}.jar",
+            self.get_compiler(),
+            src_path.to_str().unwrap(),
+            self.get_class_name(src_path)
+        ))
     }
 
     fn get_execution_command(&self, path: &PathBuf) -> String {
@@ -57,6 +68,6 @@ impl Language for Kotlin {
     }
 
     fn check_compiler_or_interpreter(&self) -> String {
-        format!("{} -version",self.get_compiler())
+        format!("{} -version", self.get_compiler())
     }
 }

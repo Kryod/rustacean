@@ -3,26 +3,26 @@ use std::path::PathBuf;
 use crate::commands::exec::language::Language;
 
 #[derive(Debug)]
-pub struct Shell;
+pub struct Julia;
 
-impl Language for Shell {
+impl Language for Julia {
     fn get_image_name(&self) -> String {
-        "rustacean-shell".into()
+        "rustacean-julia".into()
     }
 
     fn get_lang_name(&self) -> String {
-        "Shell".into()
+        "Julia".into()
     }
 
     fn get_source_file_ext(&self) -> String {
-        ".sh".into()
+        ".jl".into()
     }
 
     fn get_execution_command(&self, path: &PathBuf) -> String {
-        format!("sh {}", path.to_str().unwrap())
+        format!("julia {}", path.to_str().unwrap())
     }
 
     fn check_compiler_or_interpreter(&self) -> String {
-        String::from("$SHELL --version")
+        String::from("julia --version")
     }
 }

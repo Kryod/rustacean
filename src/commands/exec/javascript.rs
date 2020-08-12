@@ -7,7 +7,7 @@ pub struct JavaScript;
 
 impl JavaScript {
     fn get_interpreter(&self) -> String {
-        if cfg!(windows) || cfg!(target_os="macos") {
+        if cfg!(windows) || cfg!(target_os = "macos") {
             "node".into()
         } else {
             "nodejs".into()

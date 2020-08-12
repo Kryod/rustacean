@@ -33,6 +33,6 @@ impl Language for Lua {
     }
 
     fn check_compiler_or_interpreter(&self) -> String {
-        format!("{} -v",self.get_interpreter())
+        format!("{} -v", self.get_interpreter())
     }
 }

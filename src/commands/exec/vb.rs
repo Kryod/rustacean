@@ -33,14 +33,17 @@ impl Language for Vb {
 
         let re = Regex::new(r"Module\s*.*\s*Sub\s*Main\s*\(\s*\)").unwrap();
         if !re.is_match(&code) {
-            let result = format!(r"
+            let result = format!(
+                r"
 Imports System
 
 Module Program
     Sub Main()
         {}
     End Sub
-End Module", code);
+End Module",
+                code
+            );
             return Some(result);
         }
 
@@ -50,7 +53,12 @@ End Module", code);
     fn get_compiler_command(&self, src_path: &PathBuf, exe_path: &PathBuf) -> Option<String> {
         let compiler = self.get_compiler();
         let out = format!("/out:{}", exe_path.to_str().unwrap());
-        Some(format!("{} {} /target:winexe /nologo /quiet {}", compiler, out, src_path.to_str().unwrap()))
+        Some(format!(
+            "{} {} /target:winexe /nologo /quiet {}",
+            compiler,
+            out,
+            src_path.to_str().unwrap()
+        ))
     }
 
     fn get_execution_command(&self, path: &PathBuf) -> String {

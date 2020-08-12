@@ -31,7 +31,11 @@ impl Language for Rust {
     }
 
     fn get_compiler_command(&self, src_path: &PathBuf, exe_path: &PathBuf) -> Option<String> {
-        Some(format!("rustc {} -o {}", src_path.to_str().unwrap(), exe_path.to_str().unwrap()))
+        Some(format!(
+            "rustc {} -o {}",
+            src_path.to_str().unwrap(),
+            exe_path.to_str().unwrap()
+        ))
     }
 
     fn check_compiler_or_interpreter(&self) -> String {

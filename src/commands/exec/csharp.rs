@@ -23,7 +23,8 @@ impl Language for Csharp {
 
         let re = Regex::new(r"(?s)(class\s+.*\{.*static\s+void\s+Main\s*\(.*\))").unwrap();
         if !re.is_match(&code) {
-            let result = format!(r"
+            let result = format!(
+                r"
 using System;
 
 public class Program
@@ -32,7 +33,9 @@ public class Program
     {{
         {}
     }}
-}}", code);
+}}",
+                code
+            );
             return Some(result);
         }
 
@@ -55,7 +58,14 @@ public class Program
                 "-nologo",
             )
         };
-        Some(format!("{} {} {} {} {}", compiler, out, target, nologo, src_path.to_str().unwrap()))
+        Some(format!(
+            "{} {} {} {} {}",
+            compiler,
+            out,
+            target,
+            nologo,
+            src_path.to_str().unwrap()
+        ))
     }
 
     fn get_execution_command(&self, path: &PathBuf) -> String {
