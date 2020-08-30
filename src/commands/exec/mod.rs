@@ -322,6 +322,14 @@ fn exec(ctx: &mut Context, msg: &Message) -> CommandResult {
     let split = arg.split("```");
     let data = ctx.data.read();
     let settings = data.get::<Settings>().unwrap().lock().unwrap().clone();
+    let attachments = &msg.attachments;
+    let mut file_list = Vec::new();
+    for attachment in attachments {
+        match attachment.height {
+            Some(_) => {},
+            None => {file_list.push(attachment)},
+        }
+    }
 
     let langs = data
         .get::<LangManager>()
@@ -330,12 +338,43 @@ fn exec(ctx: &mut Context, msg: &Message) -> CommandResult {
         .unwrap()
         .get_languages_list();
     drop(data);
+    let mut ret = None;
 
-    if split.clone().nth(1).is_none() {
+    if split.clone().nth(1).is_none() && file_list.len() ==0  {
         let _ = msg.reply(&ctx, &format!("Please add a code section to your message\nExample:\n{}exec\n\\`\\`\\`language\n**code**\n\\`\\`\\`\nHere are the languages available: {}", settings.command_prefix, langs))?;
         return Ok(());
+    } 
+    else if split.clone().nth(1).is_none() {
+        while let Some(file) = file_list.pop() {
+            let result = file.download();
+            match result {
+                // Ok(Vec<u8>) 
+                Ok(vector) => {
+                    match String::from_utf8(vector) {
+                        Ok(result) => {
+                            ret = Some(result);
+                            break;
+                        },
+                        Err(_) => {},
+                    }
+                },
+                Err(_) => {},
+            }
+        }
     }
-    let code = split.take(2).collect::<Vec<_>>()[1];
+    let mut code = String::new();
+
+    match ret {
+        None => {
+            let tmp = split.take(2).collect::<Vec<_>>()[1];
+            code.insert_str(0,tmp);
+
+        },
+        Some(t) => {
+            code = t ;
+            //code = t.take(2).collect::<Vec<_>>()[1];
+        }
+    }
 
     let mut split = code.split('\n');
     let (lang_code, code) = match split.next() {
