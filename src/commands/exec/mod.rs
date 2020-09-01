@@ -363,9 +363,25 @@ fn exec(ctx: &mut Context, msg: &Message) -> CommandResult {
                 Err(_) => {},
             }
         }
-   	}
+   	} else if file_list.len() > 0 {
+        while let Some(file) = file_list.pop() {
+            let result = file.download();
+            let mut _resultingstring = String::new();
+            match result {
+                Ok(vector) => {
+                    match String::from_utf8(vector) {
+                        Ok(result) =>{
+                            _resultingstring.push_str(result.as_str());
+                            ret = Some(_resultingstring);
+                        },
+                        Err(_) => {}
+                    }
+                },
+                Err(_) => {}
+            }
+        }
+    }
     let mut code = String::new();
-
     match ret {
         None => {
             let tmp = split.take(2).collect::<Vec<_>>()[1];
