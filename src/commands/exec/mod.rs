@@ -380,6 +380,22 @@ fn exec(ctx: &mut Context, msg: &Message) -> CommandResult {
                 Err(_) => {}
             }
         }
+	match ret {
+		Some(mut result) => {
+           	let mut tmp =String::new();
+            let t = split.clone().take(2).collect::<Vec<_>>()[1];
+            tmp.push_str(t);
+    		let mut sp = tmp.split('\n');
+            let code;
+    	    match sp.next() {
+            Some(_) => {
+                code = sp.collect::<Vec<_>>().join("\n");
+	            result.push_str(code.as_str());
+		    },
+	        None => {}
+	        }
+            ret = Some(result)
+    }, None => {}}
     }
     let mut code = String::new();
     match ret {
