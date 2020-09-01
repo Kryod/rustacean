@@ -364,6 +364,7 @@ fn exec(ctx: &mut Context, msg: &Message) -> CommandResult {
             }
         }
    	} else if file_list.len() > 0 {
+    println!("Third Case");
         while let Some(file) = file_list.pop() {
             let result = file.download();
             let mut _resultingstring = String::new();
@@ -412,9 +413,9 @@ fn exec(ctx: &mut Context, msg: &Message) -> CommandResult {
             	let tmp = tmp_split.take(2).collect::<Vec<_>>()[0] ;
             	code.insert_str(0,tmp);}
 	    else{
-		    let tmp = tmp_split.clone().take(2).collect::<Vec<_>>()[1] ;
+		    let tmp = tmp_split.clone().take(3).collect::<Vec<_>>()[1] ;
             	code.insert_str(0,tmp);
-		    let tmp_1 = tmp_split.take(2).collect::<Vec<_>>()[2] ;
+		    let tmp_1 = tmp_split.take(3).collect::<Vec<_>>()[2] ;
             	code.insert_str(0,tmp_1);
             }
         }
