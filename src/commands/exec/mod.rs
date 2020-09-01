@@ -411,9 +411,9 @@ fn exec(ctx: &mut Context, msg: &Message) -> CommandResult {
             	let tmp = tmp_split.take(2).collect::<Vec<_>>()[0] ;
             	code.insert_str(0,tmp);}
 	    else{
-		    let tmp = tmp_split.clone().take(2).collect::<Vec<_>>()[0] ;
+		    let tmp = tmp_split.clone().take(2).collect::<Vec<_>>()[1] ;
             	code.insert_str(0,tmp);
-		    let tmp_1 = tmp_split.take(2).collect::<Vec<_>>()[1] ;
+		    let tmp_1 = tmp_split.take(2).collect::<Vec<_>>()[2] ;
             	code.insert_str(0,tmp_1);
             }
         }
