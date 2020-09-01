@@ -379,9 +379,10 @@ fn exec(ctx: &mut Context, msg: &Message) -> CommandResult {
                 },
                 Err(_) => {}
             }
-        }
+    }
 	match ret {
 		Some(res_1) => {
+            println!("{}", res_1);
             let mut result= res_1.clone();
            	let mut tmp =String::new();
             let t = split.clone().take(2).collect::<Vec<_>>()[1];
