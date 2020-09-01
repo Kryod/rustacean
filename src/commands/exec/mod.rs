@@ -405,14 +405,17 @@ fn exec(ctx: &mut Context, msg: &Message) -> CommandResult {
             code.insert_str(0,tmp);
         },
         Some(t) => {
-        println!("Here is the result: {}", rt);
+        println!("Here is the result: {}", t);
 	    let tmp_split = t.split("```");
 	        if tmp_split.clone().nth(1).is_none() {
             	let tmp = tmp_split.take(2).collect::<Vec<_>>()[0] ;
             	code.insert_str(0,tmp);}
 	    else{
-		    let tmp = tmp_split.take(2).collect::<Vec<_>>()[1] ;
-            	code.insert_str(0,tmp);}
+		    let tmp = tmp_split.clone().take(2).collect::<Vec<_>>()[0] ;
+            	code.insert_str(0,tmp);
+		    let tmp_1 = tmp_split.take(2).collect::<Vec<_>>()[1] ;
+            	code.insert_str(0,tmp_1);
+            }
         }
     }
     println!("Here is the code : {}", code);
