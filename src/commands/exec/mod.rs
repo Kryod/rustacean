@@ -370,7 +370,7 @@ fn exec(ctx: &mut Context, msg: &Message) -> CommandResult {
             match result {
                 Ok(vector) => {
                     match String::from_utf8(vector) {
-                        Ok(result) =>{
+                        Ok(result) => {
                             _resultingstring.push_str(result.as_str());
                             ret = Some(_resultingstring);
                         },
@@ -381,7 +381,8 @@ fn exec(ctx: &mut Context, msg: &Message) -> CommandResult {
             }
         }
 	match ret {
-		Some(mut result) => {
+		Some(res_1) => {
+            let mut result= res_1.clone();
            	let mut tmp =String::new();
             let t = split.clone().take(2).collect::<Vec<_>>()[1];
             tmp.push_str(t);
@@ -395,7 +396,7 @@ fn exec(ctx: &mut Context, msg: &Message) -> CommandResult {
 	        None => {}
 	        }
             ret = Some(result)
-    }, None => {}}
+        }, None => {}}
     }
     let mut code = String::new();
     match ret {
@@ -404,6 +405,7 @@ fn exec(ctx: &mut Context, msg: &Message) -> CommandResult {
             code.insert_str(0,tmp);
         },
         Some(t) => {
+        println!("Here is the result: {}", code);
 	    let tmp_split = t.split("```");
 	        if tmp_split.clone().nth(1).is_none() {
             	let tmp = tmp_split.take(2).collect::<Vec<_>>()[0] ;
