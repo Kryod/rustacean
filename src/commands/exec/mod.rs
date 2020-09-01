@@ -330,6 +330,7 @@ fn exec(ctx: &mut Context, msg: &Message) -> CommandResult {
             None => {file_list.push(attachment)},
         }
     }
+    println!("Attachment lenght:{0} , Files{1}",attachments.len(),file_list.len());
 
     let langs = data
         .get::<LangManager>()
