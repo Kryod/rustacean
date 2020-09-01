@@ -326,11 +326,11 @@ fn exec(ctx: &mut Context, msg: &Message) -> CommandResult {
     let mut file_list = Vec::new();
     for attachment in attachments {
         match attachment.height {
-            Some(_) => {},
-            None => {file_list.push(attachment)},
+            Some(_) => {}, // Pictures have a height included
+            None => {file_list.push(attachment)}, // Other file don't
         }
     }
-    println!("Attachment lenght:{0} , Files{1}",attachments.len(),file_list.len());
+    // println!("Attachment lenght: {0} , Files: {1}",attachments.len(),file_list.len());
 
     let langs = data
         .get::<LangManager>()
@@ -346,6 +346,7 @@ fn exec(ctx: &mut Context, msg: &Message) -> CommandResult {
         return Ok(());
     } 
     else if split.clone().nth(1).is_none() {
+	println!("Second Case");
         while let Some(file) = file_list.pop() {
             let result = file.download();
             match result {
@@ -362,20 +363,27 @@ fn exec(ctx: &mut Context, msg: &Message) -> CommandResult {
                 Err(_) => {},
             }
         }
-    }
+   	}
     let mut code = String::new();
 
     match ret {
         None => {
             let tmp = split.take(2).collect::<Vec<_>>()[1];
             code.insert_str(0,tmp);
-
         },
         Some(t) => {
-            code = t ;
-            //code = t.take(2).collect::<Vec<_>>()[1];
+	    let tmp_split = t.split("```");
+	    if tmp_split.clone().nth(1).is_none() {
+            	let tmp = tmp_split.take(2).collect::<Vec<_>>()[0] ;
+            	code.insert_str(0,tmp);
+		}
+	    else{
+		let tmp = tmp_split.take(2).collect::<Vec<_>>()[1] ;
+            	code.insert_str(0,tmp);
+	    }
         }
     }
+    println!("Here is the code : {}", code);
 
     let mut split = code.split('\n');
     let (lang_code, code) = match split.next() {
