@@ -339,91 +339,32 @@ fn exec(ctx: &mut Context, msg: &Message) -> CommandResult {
         .unwrap()
         .get_languages_list();
     drop(data);
-    let mut ret = None;
+    //let mut ret = None;
 
-    if split.clone().nth(1).is_none() && file_list.len() ==0  {
+    if split.clone().nth(1).is_none() {
         let _ = msg.reply(&ctx, &format!("Please add a code section to your message\nExample:\n{}exec\n\\`\\`\\`language\n**code**\n\\`\\`\\`\nHere are the languages available: {}", settings.command_prefix, langs))?;
         return Ok(());
     } 
-    else if split.clone().nth(1).is_none() {
-	println!("Second Case");
+    let mut code= String::new();
+    if file_list.len()> 0 {
         while let Some(file) = file_list.pop() {
             let result = file.download();
             match result {
-                // Ok(Vec<u8>) 
-                Ok(vector) => {
-                    match String::from_utf8(vector) {
-                        Ok(result) => {
-                            ret = Some(result);
-                            break;
-                        },
-                        Err(_) => {},
-                    }
-                },
                 Err(_) => {},
-            }
-        }
-   	} else if file_list.len() > 0 {
-    println!("Third Case");
-        while let Some(file) = file_list.pop() {
-            let result = file.download();
-            let mut _resultingstring = String::new();
-            match result {
                 Ok(vector) => {
                     match String::from_utf8(vector) {
-                        Ok(result) => {
-                            _resultingstring.push_str(result.as_str());
-                            ret = Some(_resultingstring);
-                        },
-                        Err(_) => {}
+                        Err(_) => {},
+                        Ok(string) => {
+                            code.push_str(string.as_str());
+                        }
                     }
-                },
-                Err(_) => {}
-            }
-    }
-	match ret {
-		Some(res_1) => {
-            println!("{}", res_1);
-            let mut result= res_1.clone();
-           	let mut tmp =String::new();
-            let t = split.clone().take(2).collect::<Vec<_>>()[1];
-            tmp.push_str(t);
-    		let mut sp = tmp.split('\n');
-            let code;
-    	    match sp.next() {
-            Some(_) => {
-                code = sp.collect::<Vec<_>>().join("\n");
-	            result.push_str(code.as_str());
-		    },
-	        None => {}
-	        }
-            ret = Some(result)
-        }, None => {}}
-    }
-    let mut code = String::new();
-    match ret {
-        None => {
-            let tmp = split.take(2).collect::<Vec<_>>()[1];
-            code.insert_str(0,tmp);
-        },
-        Some(t) => {
-        println!("Here is the result: {}", t);
-	    let tmp_split = t.split("```");
-	        if tmp_split.clone().nth(1).is_none() {
-            	let tmp = tmp_split.take(2).collect::<Vec<_>>()[0] ;
-            	code.insert_str(0,tmp);}
-	    else{
-		    let tmp = tmp_split.clone().take(3).collect::<Vec<_>>()[1] ;
-            	code.insert_str(0,tmp);
-		    let tmp_1 = tmp_split.take(3).collect::<Vec<_>>()[2] ;
-            	code.insert_str(0,tmp_1);
+                }
             }
         }
     }
-    println!("Here is the code : {}", code);
-
-    let mut split = code.split('\n');
-    let (lang_code, code) = match split.next() {
+    let tmp = split.clone().take(2).collect::<Vec<_>>().join("\n");
+    let mut split = tmp.split('\n');
+    let (lang_code, text) = match split.next() {
         Some(line) => {
             let code = split.collect::<Vec<_>>().join("\n");
             let lang = line.trim().to_ascii_lowercase();
@@ -440,6 +381,9 @@ fn exec(ctx: &mut Context, msg: &Message) -> CommandResult {
             return Ok(());
         }
     };
+    code.push_str(text.as_str());
+
+    println!("Here is the code : {}", code);
 
     let mut reply_msg: Message;
     let (mut compilation, mut execution, lang) = {
