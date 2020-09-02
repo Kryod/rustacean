@@ -330,7 +330,6 @@ fn exec(ctx: &mut Context, msg: &Message) -> CommandResult {
             None => {file_list.push(attachment)}, // Other file don't
         }
     }
-    // println!("Attachment lenght: {0} , Files: {1}",attachments.len(),file_list.len());
 
     let langs = data
         .get::<LangManager>()
@@ -339,7 +338,6 @@ fn exec(ctx: &mut Context, msg: &Message) -> CommandResult {
         .unwrap()
         .get_languages_list();
     drop(data);
-    //let mut ret = None;
 
     if split.clone().nth(1).is_none() {
         let _ = msg.reply(&ctx, &format!("Please add a code section to your message\nExample:\n{}exec\n\\`\\`\\`language\n**code**\n\\`\\`\\`\nHere are the languages available: {}", settings.command_prefix, langs))?;
@@ -383,8 +381,6 @@ fn exec(ctx: &mut Context, msg: &Message) -> CommandResult {
         }
     };
     code.push_str(text.as_str());
-
-    println!("Here is the code : {}", code);
 
     let mut reply_msg: Message;
     let (mut compilation, mut execution, lang) = {
