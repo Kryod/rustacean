@@ -362,11 +362,12 @@ fn exec(ctx: &mut Context, msg: &Message) -> CommandResult {
             }
         }
     }
-    let tmp = split.clone().take(2).collect::<Vec<_>>().join("\n");
+    let tmp = split.take(2).collect::<Vec<_>>()[1];
     let mut split = tmp.split('\n');
     let (lang_code, text) = match split.next() {
         Some(line) => {
             let code = split.collect::<Vec<_>>().join("\n");
+            println!("Line {}", line);
             let lang = line.trim().to_ascii_lowercase();
             (lang, code)
         }
