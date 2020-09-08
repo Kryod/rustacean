@@ -10,6 +10,18 @@ Rustacean is a Discord bot that allows users to execute code snippets.
 
 Made with Rust 🦀❤
 
+## Foreword
+
+WARNING: this is the unsafe version of rustacean, this is meant for personal use. The features that this branch has are considered unsafe.
+We recommend creating your own discord application to host this bot and keep the bot in small servers where you can monitor what's going on.
+
+We won't be held responsible for any trouble encoutered with this branch. Use it at your own risk.
+
+## Unsafe features
+
+Current unsafe features:
+  - Ability to send scripts directly in the `~exec` command (Pull request [#31])
+
 ## Commands
 
 **`~help`**: Get a list of commands. Use `~help <command>` to get details on a command.
@@ -133,3 +145,4 @@ After your PR is validated by Travis we will happily merge it.
 [guild-badge]: https://img.shields.io/discord/509055716305141780.svg?style=flat-square&colorB=7289DA
 [rust 1.33+ badge]: https://img.shields.io/badge/rust-1.33+-93450a.svg?style=flat-square
 [rust 1.33+ link]: https://blog.rust-lang.org/2019/02/28/Rust-1.33.0.html
+[#31]: https://github.com/Kryod/rustacean/pull/31
