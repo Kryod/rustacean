@@ -89,6 +89,11 @@ impl LangManager {
             .insert(vec!["julia".into()], Arc::new(Box::new(Julia)));
         mngr.languages
             .insert(vec!["go".into()], Arc::new(Box::new(Go)));
+        mngr.languages.insert(vec![
+            "pony".into(),
+            "ponyc".into(),
+            "ponylang".into()
+        ], Arc::new(Box::new(Pony)));
 
         mngr
     }

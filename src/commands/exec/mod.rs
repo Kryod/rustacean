@@ -69,6 +69,9 @@ pub use self::julia::Julia;
 mod go;
 pub use self::go::Go;
 
+mod pony;
+pub use self::pony::Pony;
+
 mod typescript;
 pub use self::typescript::Typescript;
 
@@ -322,6 +325,14 @@ fn exec(ctx: &mut Context, msg: &Message) -> CommandResult {
     let split = arg.split("```");
     let data = ctx.data.read();
     let settings = data.get::<Settings>().unwrap().lock().unwrap().clone();
+    let attachments = &msg.attachments;
+    let mut file_list = Vec::new();
+    for attachment in attachments {
+        match attachment.height {
+            Some(_) => {}, // Pictures have a height included
+            None => {file_list.push(attachment)}, // Other file don't
+        }
+    }
 
     let langs = data
         .get::<LangManager>()
@@ -334,13 +345,30 @@ fn exec(ctx: &mut Context, msg: &Message) -> CommandResult {
     if split.clone().nth(1).is_none() {
         let _ = msg.reply(&ctx, &format!("Please add a code section to your message\nExample:\n{}exec\n\\`\\`\\`language\n**code**\n\\`\\`\\`\nHere are the languages available: {}", settings.command_prefix, langs))?;
         return Ok(());
+    } 
+    let mut code= String::new();
+    if file_list.len()> 0 {
+        while let Some(file) = file_list.pop() {
+            let result = file.download();
+            match result {
+                Err(_) => {},
+                Ok(vector) => {
+                    match String::from_utf8(vector) {
+                        Err(_) => {},
+                        Ok(string) => {
+                            code.push_str(string.as_str());
+                        }
+                    }
+                }
+            }
+        }
     }
-    let code = split.take(2).collect::<Vec<_>>()[1];
-
-    let mut split = code.split('\n');
-    let (lang_code, code) = match split.next() {
+    let tmp = split.take(2).collect::<Vec<_>>()[1];
+    let mut split = tmp.split('\n');
+    let (lang_code, text) = match split.next() {
         Some(line) => {
             let code = split.collect::<Vec<_>>().join("\n");
+            println!("Line {}", line);
             let lang = line.trim().to_ascii_lowercase();
             (lang, code)
         }
@@ -355,6 +383,7 @@ fn exec(ctx: &mut Context, msg: &Message) -> CommandResult {
             return Ok(());
         }
     };
+    code.push_str(text.as_str());
 
     let mut reply_msg: Message;
     let (mut compilation, mut execution, lang) = {
