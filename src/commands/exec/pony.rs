@@ -7,7 +7,7 @@ pub struct Pony;
 
 impl Language for Pony {
     fn get_image_name(&self) -> String {
-        "rustacean-pony".into()
+        "ponylang/ponyc".into()
     }
 
     fn get_lang_name(&self) -> String {
