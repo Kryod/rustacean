@@ -46,7 +46,7 @@ impl Language for Pony {
         }
 	println!("{}", c.to_str().unwrap());
         Some(format!(
-            "ponyc {} ",
+            "ponyc {} -V 0",
                 c.to_str().unwrap()
             ))
    }
