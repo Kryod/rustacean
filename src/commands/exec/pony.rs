@@ -21,14 +21,14 @@ impl Language for Pony {
     fn pre_process_code(&self, code: &str, _src_path: &PathBuf) -> Option<String> {
         use regex::Regex;
 
-        let re = Regex::new(r"(?s)(actor\s+Main\s*\n+^new create\(.*\)\s=>)/m").unwrap();
-        if !re.is_match(&code) {
-            // let result = format!("use \"stdlib\"\r\nuse \"random\"\r\nuse \"serialize\"\r\n use \"options\"\r\n use \"file\"\r\nuse \" builtin\"\r\nuse \"base64\"\r\nuse \"json\"\r\nuse \"itertools\"\r\nuse \"logger\"\r\n use\"math\"\r\nuse \"format\"\r\nactor Main\r\nnew create(env: Env)=>\r\n{}", code);
-		let result = format!(" use \"random\"\r\n use \"json\" \r\n use \"itertools\"\r\n actor Main\r\nnew create(env: Env)=>\r\n{}",code);
+	let re= Regex::new(r"(\s*)actor\s*Main\s*new\s*create*\(\s*env\s*:\s*Env\s*\)\s*=>\s*(.|\s)*").unwrap();
+	if (!re.is_match(code)){
+	    println!("MATCH!");
+		let result = format!("use \"random\"\r\n use \"json\" \r\n use \"itertools\"\r\n actor Main\r\nnew create(env: Env)=>\r\n{}",code);
             return Some(result);
         }
-
-        None
+	println!("No Match!");
+	return Some(format!("{}",code));
     }
     fn get_execution_command(&self, path:&PathBuf) -> String {
 		String::from(path.to_str().unwrap())
