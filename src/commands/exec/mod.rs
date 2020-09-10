@@ -75,7 +75,7 @@ pub use self::typescript::Typescript;
 mod vb;
 pub use self::vb::Vb;
 
-mod pony
+mod pony;
 pub use self::pony::Pony;
 
 #[derive(Debug, Default)]
