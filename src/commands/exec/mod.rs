@@ -75,13 +75,8 @@ pub use self::typescript::Typescript;
 mod vb;
 pub use self::vb::Vb;
 
-<<<<<<< HEAD
-mod pony;
-pub use self::pony::Pony;
-=======
 mod prolog;
 pub use self::prolog::Prolog;
->>>>>>> 3f7ae66eec2200c778241bb5d093f59628345fcc
 
 #[derive(Debug, Default)]
 pub struct ExecResult {

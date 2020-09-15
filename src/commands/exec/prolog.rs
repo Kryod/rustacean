@@ -1,4 +1,5 @@
 use std::path::PathBuf;
+use regex::Regex;
 
 use crate::commands::exec::language::Language;
 
@@ -19,7 +20,7 @@ impl Language for Prolog {
     }
 
     fn get_execution_command(&self, path: &PathBuf) -> String {
-        format!("swipl -g true <{}", path.to_str().unwrap())
+        format!("swipl -q {0}", path.to_str().unwrap())
     }
 
     fn check_compiler_or_interpreter(&self) -> String {
@@ -28,12 +29,12 @@ impl Language for Prolog {
 
     fn pre_process_code(&self, code: &str, _src_path: &PathBuf) -> Option<String> {
 
-        let re = Regex::new(r"(.|\n)*halt.\m").unwrap();
+        let re = Regex::new(r"(.|\n)*halt./m").unwrap();
         if !re.is_match(&code) {
-            let result = format!("{}", code);
+            let result = format!("sol(Goal):-call(Goal),write(true); write(false).\n{}", code);
             return Some(result);
         } else {
-            let result = format!("{}\nhalt.", code);
+            let result = format!("sol(Goal):-call(Goal),write(true);write(false).\n{}\nhalt.", code);
             return Some(result);
         }
     }
