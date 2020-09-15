@@ -92,6 +92,11 @@ impl LangManager {
         mngr.languages.insert(vec![
             "prolog".into()
         ], Arc::new(Box::new(Prolog)));
+	mngr.languages.insert(vec![
+	    "pony".into(),
+	    "ponyc".into(),
+	    "ponylang".into()
+        ], Arc::new(Box::new(Prolog)));
 
         mngr
     }

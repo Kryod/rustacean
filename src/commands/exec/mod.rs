@@ -78,6 +78,9 @@ pub use self::vb::Vb;
 mod prolog;
 pub use self::prolog::Prolog;
 
+mod pony;
+pub use self::pony::Pony;
+
 #[derive(Debug, Default)]
 pub struct ExecResult {
     pub exit_code: Option<i32>,
