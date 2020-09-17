@@ -17,7 +17,3 @@ RUN sh -c "$(curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.
  && ponyup update stable nightly \
  && ponyup update corral nightly \
  && ponyup update changelog-tool nightly
-
-RUN sh -c ""
-
-WORKDIR /src/main
