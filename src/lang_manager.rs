@@ -89,6 +89,8 @@ impl LangManager {
             .insert(vec!["julia".into()], Arc::new(Box::new(Julia)));
         mngr.languages
             .insert(vec!["go".into()], Arc::new(Box::new(Go)));
+        mngr.languages
+            .insert(vec!["ocaml".into(), "ml".into()], Arc::new(Box::new(OCaml)));
 
         mngr
     }
