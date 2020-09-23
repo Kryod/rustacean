@@ -75,6 +75,9 @@ pub use self::typescript::Typescript;
 mod vb;
 pub use self::vb::Vb;
 
+mod ocaml;
+pub use self::ocaml::OCaml;
+
 #[derive(Debug, Default)]
 pub struct ExecResult {
     pub exit_code: Option<i32>,

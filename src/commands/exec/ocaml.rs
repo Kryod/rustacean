@@ -23,6 +23,6 @@ impl Language for OCaml {
   }
 
   fn check_compiler_or_interpreter(&self) -> String {
-    format!("{} --version", self.get_interpreter())
+    "ocaml --version".into()
   }
 }
