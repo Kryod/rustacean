@@ -1,3 +1,1 @@
-FROM ubuntu:latest
-
-RUN apt install ocaml-nox
+FROM ocaml/ocaml:latest
