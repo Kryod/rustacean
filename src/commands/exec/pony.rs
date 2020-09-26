@@ -29,20 +29,19 @@ impl Language for Pony {
 	return Some(format!("{}",code));
     }
     fn get_execution_command(&self, path:&PathBuf) -> String {
-		String::from(path.to_str().unwrap())
+		String::from(path.to_str().expect("Path: to_str()"))
 	}
 
     fn get_compiler_command(&self, src_path: &PathBuf, _dest_path : &PathBuf) -> Option<String> {
         let c;
         match src_path.is_dir() {
             false => {
-                c=src_path.parent().unwrap();
+                c=src_path.parent().expect("Got no parent!");
             }
             true => {
                 c=src_path; 
             }
         }
-	println!("{}", c.to_str().unwrap());
         Some(format!(
             "ponyc {} -V 0",
                 c.to_str().unwrap()
