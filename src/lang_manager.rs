@@ -92,6 +92,14 @@ impl LangManager {
         mngr.languages
             .insert(vec!["ocaml".into(), "ml".into()], Arc::new(Box::new(OCaml)));
 
+        mngr.languages
+            .insert(vec!["prolog".into()], Arc::new(Box::new(Prolog)));
+
+        mngr.languages
+            .insert(vec![
+	            "pony".into(),
+	            "ponyc".into(),
+	            "ponylang".into()], Arc::new(Box::new(Pony)));
         mngr
     }
 
@@ -145,11 +153,9 @@ impl LangManager {
         let mut results: Vec<(bool, String)> = Vec::new();
 
         for boxed_lang in self.languages.values() {
-            //let command = boxed_lang.check_compiler_or_interpreter().stdout_null().stderr_null();
             let lang_name = boxed_lang.get_lang_name();
             let low_lang_name = lang_name.to_lowercase();
             self.versions.insert(lang_name.clone(), None);
-            //let lang_command: Vec<OsString> = boxed_lang.check_compiler_or_interpreter().split(" ").collect::<Vec<&str>>().iter().map(|&x| OsString::from(x)).collect();
             match cmd!(
                 "docker",
                 "run",
@@ -197,7 +203,6 @@ impl LangManager {
         let mut results: Vec<(bool, String)> = Vec::new();
 
         for boxed_lang in self.languages.values() {
-            //let command = boxed_lang.check_compiler_or_interpreter().stdout_null().stderr_null();
             let lang_name = boxed_lang.get_lang_name();
             let low_lang_name = lang_name.to_lowercase();
             self.availability.insert(lang_name.clone(), false);
