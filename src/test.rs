@@ -179,6 +179,6 @@ fn test_kotlin() {
 
 #[test]
 fn test_ocaml() {
-    test_lang("print_endline \"hello world\"", "ocaml", 0, false, "test");
-    test_lang("let main = print_endline \"hello world\"; exit 0", "ocaml", 0, false, "test");
+    test_lang("print_endline \"test\"", "ocaml", 0, false, "test");
+    test_lang("let main = print_endline \"test\"; exit 0", "ocaml", 0, false, "test");
 }
