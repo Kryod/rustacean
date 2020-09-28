@@ -1,0 +1,1 @@
+FROM ocaml/ocaml:latest

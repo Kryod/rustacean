@@ -176,3 +176,9 @@ fn test_kotlin() {
     test_lang("print(\"test\")", "kt", 0, false, "test");
     test_lang("fun main(args: Array<String>) {\nprint(\"test\")\n}", "kt", 0, false, "test");
 }
+
+#[test]
+fn test_ocaml() {
+    test_lang("print_string \"test\"", "ocaml", 0, false, "test");
+    test_lang("let main = print_string \"test\"; exit 0", "ocaml", 0, false, "test");
+}

@@ -75,6 +75,9 @@ pub use self::typescript::Typescript;
 mod vb;
 pub use self::vb::Vb;
 
+mod ocaml;
+pub use self::ocaml::OCaml;
+
 mod prolog;
 pub use self::prolog::Prolog;
 
