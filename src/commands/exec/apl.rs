@@ -3,15 +3,15 @@ use std::path::PathBuf;
 use crate::commands::exec::language::Language;
 
 #[derive(Debug)]
-pub struct Dyalog;
+pub struct Apl;
 
-impl Language for Dyalog {
+impl Language for Apl {
     fn get_image_name(&self) -> String {
         "rustacean-apl".into()
     }
 
     fn get_lang_name(&self) -> String {
-        "APL".into()
+        "apl".into()
     }
 
     fn get_source_file_ext(&self) -> String {

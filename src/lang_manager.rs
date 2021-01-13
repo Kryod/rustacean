@@ -99,7 +99,14 @@ impl LangManager {
             .insert(vec![
 	            "pony".into(),
 	            "ponyc".into(),
-	            "ponylang".into()], Arc::new(Box::new(Pony)));
+                "ponylang".into()], Arc::new(Box::new(Pony)));
+        
+        mngr.languages
+            .insert(vec![
+                "apl".into(),
+                "dyalog".into()
+            ], Arc::new(Box::new(Apl)));
+
         mngr
     }
 

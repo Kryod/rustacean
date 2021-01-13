@@ -84,6 +84,9 @@ pub use self::prolog::Prolog;
 mod pony;
 pub use self::pony::Pony;
 
+mod apl;
+pub use self::apl::Apl;
+
 #[derive(Debug, Default)]
 pub struct ExecResult {
     pub exit_code: Option<i32>,
