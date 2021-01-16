@@ -186,5 +186,5 @@ fn test_ocaml() {
 #[test]
 fn test_apl() {
     // Simple test : will just print out "Hello World!"
-    test_lang("[]<-'Hello World!'", "apl", 0, false, "Hello World!\n");
+    test_lang("'Hello World!'", "apl", 0, false, "Hello World!\n");
 }
