@@ -7,7 +7,9 @@ RUN apt-get install -y \
     mlton \                      
     unzip
 
-COPY rootfs/ /
+RUN mkdir -p /usr/lib/mlton/ && touch /usr/lib/mlton/mlb-path-map && mkdir -p /root/.smackage/ && touch /root/.smackage/sources.local
+RUN echo "MLTON_ROOT \$(LIB_MLTON_DIR)/sml\nSML_LIB \$(LIB_MLTON_DIR)/sml\nSMACKAGE /root/.smackage/lib" >> /usr/lib/mlton/mlb-path-map
+RUN echo "aplparse git git://github.com/melsman/aplparse.git\nMoA git git://github.com/melsman/MoA.git\nkitlib git git://github.com/melsman/kitlib.git\nsmackage git git://github.com/standardml/smackage.git\naplc git git://github.com/melsman/aplcompile.git" >> /root/.smackage/sources.local
 
 WORKDIR /usr/src
 ENV PATH=$PATH:/root/.smackage/bin
@@ -29,5 +31,3 @@ RUN \
 FROM debian:buster
 
 COPY --from=builder /usr/src/aplcompile/aplc /usr/bin
-#ENTRYPOINT aplc
-
