@@ -182,3 +182,9 @@ fn test_ocaml() {
     test_lang("print_string \"test\"", "ocaml", 0, false, "test");
     test_lang("let main = print_string \"test\"; exit 0", "ocaml", 0, false, "test");
 }
+
+#[test]
+fn test_apl() {
+    // Simple test : will just print out "Hello World!"
+    test_lang("'Hello World!'", "apl", 0, false, "Hello World!\n");
+}
